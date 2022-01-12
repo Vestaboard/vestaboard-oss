@@ -1,0 +1,5 @@
+diffutils_fix_for_automake-1.12.patch -p1
+fix_gcc6.patch -p1
+0001-Make-it-build-with-compile-time-hardening-enabled.patch -p1
+0002-included-libc-use-mempcpy-instead-of.patch -p1
+0003-context-fix-compilation-with-64bit-time_t-on-32bit-a.patch -p1

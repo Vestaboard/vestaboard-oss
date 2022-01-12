@@ -1,0 +1,37 @@
+From c03f916a8a49a3c83f72f28fefa6eab6377b909c Mon Sep 17 00:00:00 2001
+From: Jens Rehsack <rehsack@gmail.com>
+Date: Thu, 2 Jan 2020 13:51:40 +0100
+Subject: [PATCH 08/13] autoconf: fix shark build (common)
+
+Signed-off-by: Richard Leitner <richard.leitner@skidata.com>
+---
+ common/autoconf/libraries.m4 | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/common/autoconf/libraries.m4 b/common/autoconf/libraries.m4
+index 727f018..91d2b5c 100644
+--- a/common/autoconf/libraries.m4
++++ b/common/autoconf/libraries.m4
+@@ -1079,8 +1079,9 @@ AC_DEFUN_ONCE([LIB_SETUP_STATIC_LINK_LIBSTDCPP],
+         fi
+       fi
+     done
+-    llvm_version=$("${LLVM_CONFIG}" --version | sed 's/\.//; s/svn.*//')
++    llvm_version=$("${LLVM_CONFIG}" --version | sed 's/\.//; s/svn.*//; s/\..*$//')
+     LLVM_CFLAGS="${LLVM_CFLAGS} -DSHARK_LLVM_VERSION=${llvm_version}"
++    AS_IF([test $llvm_version -ge 34], [LLVM_CFLAGS="${LLVM_CFLAGS} -std=gnu++11"])
+ 
+     unset LLVM_LDFLAGS
+     for flag in $("${LLVM_CONFIG}" --ldflags); do
+@@ -1093,7 +1094,7 @@ AC_DEFUN_ONCE([LIB_SETUP_STATIC_LINK_LIBSTDCPP],
+     done
+ 
+     unset LLVM_LIBS
+-    for flag in $("${LLVM_CONFIG}" --libs ${llvm_components}); do
++    for flag in $("${LLVM_CONFIG}" --libs --system-libs ${llvm_components}); do
+       if echo "${flag}" | grep -q '^-l'; then
+         if test "${LLVM_LIBS}" != ""; then
+           LLVM_LIBS="${LLVM_LIBS} "
+-- 
+2.26.2
+

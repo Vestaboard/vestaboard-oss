@@ -1,0 +1,146 @@
+From b4e7774c35cf29aaca2bd04d115afc3ea3c77d7a Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Andr=C3=A9=20Draszik?= <andre.draszik@jci.com>
+Date: Fri, 2 Mar 2018 11:13:08 +0000
+Subject: [PATCH 2001/2009] jdk: comparison between pointer and integer
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+In file included from jdk/src/share/native/java/net/net_util.c:28:0:
+jdk/src/share/native/java/net/net_util.c: In function 'NET_SockaddrToInetAddress':
+jdk/src/share/native/common/jni_util.h:302:17: warning: comparison between pointer and integer
+         if ((x) == NULL) {                      \
+                 ^
+jdk/src/share/native/java/net/net_util.c:225:13: note: in expansion of macro 'CHECK_NULL_RETURN'
+             CHECK_NULL_RETURN(ret, NULL);
+             ^~~~~~~~~~~~~~~~~
+
+Backport a patch to fix this.
+
+Upstream-Status: Backport [http://hg.openjdk.java.net/jdk9/jdk9/jdk/rev/90c643593ed7]
+
+Signed-off-by: André Draszik <andre.draszik@jci.com>
+Signed-off-by: Richard Leitner <richard.leitner@skidata.com>
+---
+ src/share/native/java/net/net_util.c           | 15 +++++++--------
+ src/share/native/java/net/net_util.h           |  8 ++++----
+ src/solaris/native/java/net/Inet6AddressImpl.c |  4 ++--
+ 3 files changed, 13 insertions(+), 14 deletions(-)
+
+diff --git a/jdk/src/share/native/java/net/net_util.c b/jdk/src/share/native/java/net/net_util.c
+index b1b8223a63..2eee6261ac 100644
+--- a/jdk/src/share/native/java/net/net_util.c
++++ b/jdk/src/share/native/java/net/net_util.c
+@@ -108,7 +108,7 @@ jobject getInet6Address_scopeifname(JNIEnv *env, jobject iaObj) {
+     return (*env)->GetObjectField(env, holder, ia6_scopeifnameID);
+ }
+ 
+-int setInet6Address_scopeifname(JNIEnv *env, jobject iaObj, jobject scopeifname) {
++jboolean setInet6Address_scopeifname(JNIEnv *env, jobject iaObj, jobject scopeifname) {
+     jobject holder = (*env)->GetObjectField(env, iaObj, ia6_holder6ID);
+     CHECK_NULL_RETURN(holder, JNI_FALSE);
+     (*env)->SetObjectField(env, holder, ia6_scopeifnameID, scopeifname);
+@@ -127,7 +127,7 @@ int getInet6Address_scopeid(JNIEnv *env, jobject iaObj) {
+     return (*env)->GetIntField(env, holder, ia6_scopeidID);
+ }
+ 
+-int setInet6Address_scopeid(JNIEnv *env, jobject iaObj, int scopeid) {
++jboolean setInet6Address_scopeid(JNIEnv *env, jobject iaObj, int scopeid) {
+     jobject holder = (*env)->GetObjectField(env, iaObj, ia6_holder6ID);
+     CHECK_NULL_RETURN(holder, JNI_FALSE);
+     (*env)->SetIntField(env, holder, ia6_scopeidID, scopeid);
+@@ -138,7 +138,7 @@ int setInet6Address_scopeid(JNIEnv *env, jobject iaObj, int scopeid) {
+ }
+ 
+ 
+-int getInet6Address_ipaddress(JNIEnv *env, jobject iaObj, char *dest) {
++jboolean getInet6Address_ipaddress(JNIEnv *env, jobject iaObj, char *dest) {
+     jobject holder, addr;
+     jbyteArray barr;
+ 
+@@ -150,7 +150,7 @@ int getInet6Address_ipaddress(JNIEnv *env, jobject iaObj, char *dest) {
+     return JNI_TRUE;
+ }
+ 
+-int setInet6Address_ipaddress(JNIEnv *env, jobject iaObj, char *address) {
++jboolean setInet6Address_ipaddress(JNIEnv *env, jobject iaObj, char *address) {
+     jobject holder;
+     jbyteArray addr;
+ 
+@@ -208,7 +208,6 @@ NET_SockaddrToInetAddress(JNIEnv *env, struct sockaddr *him, int *port) {
+     jobject iaObj;
+ #ifdef AF_INET6
+     if (him->sa_family == AF_INET6) {
+-        jbyteArray ipaddress;
+ #ifdef WIN32
+         struct SOCKADDR_IN6 *him6 = (struct SOCKADDR_IN6 *)him;
+ #else
+@@ -226,11 +225,12 @@ NET_SockaddrToInetAddress(JNIEnv *env, struct sockaddr *him, int *port) {
+             JNU_CHECK_EXCEPTION_RETURN(env, NULL);
+         } else {
+             jint scope;
+-            int ret;
++            jboolean ret;
+             iaObj = (*env)->NewObject(env, ia6_class, ia6_ctrID);
+             CHECK_NULL_RETURN(iaObj, NULL);
+             ret = setInet6Address_ipaddress(env, iaObj, (char *)&(him6->sin6_addr));
+-            CHECK_NULL_RETURN(ret, NULL);
++            if (ret == JNI_FALSE)
++                return NULL;
+             setInetAddress_family(env, iaObj, IPv6);
+             JNU_CHECK_EXCEPTION_RETURN(env, NULL);
+             scope = getScopeID(him);
+@@ -282,7 +282,6 @@ NET_SockaddrEqualsInetAddress(JNIEnv *env, struct sockaddr *him, jobject iaObj)
+                 return JNI_FALSE;
+             }
+         } else {
+-            jbyteArray ipaddress;
+             jbyte caddrCur[16];
+             int scope;
+ 
+diff --git a/jdk/src/share/native/java/net/net_util.h b/jdk/src/share/native/java/net/net_util.h
+index c8a5e68c49..176ca586ee 100644
+--- a/jdk/src/share/native/java/net/net_util.h
++++ b/jdk/src/share/native/java/net/net_util.h
+@@ -64,12 +64,12 @@ JNIEXPORT void JNICALL initInetAddressIDs(JNIEnv *env);
+  * get_ methods that return objects return NULL on error.
+  */
+ extern jobject getInet6Address_scopeifname(JNIEnv *env, jobject ia6Obj);
+-extern int setInet6Address_scopeifname(JNIEnv *env, jobject ia6Obj, jobject scopeifname);
++extern jboolean setInet6Address_scopeifname(JNIEnv *env, jobject ia6Obj, jobject scopeifname);
+ extern int getInet6Address_scopeid_set(JNIEnv *env, jobject ia6Obj);
+ extern int getInet6Address_scopeid(JNIEnv *env, jobject ia6Obj);
+-extern int setInet6Address_scopeid(JNIEnv *env, jobject ia6Obj, int scopeid);
+-extern int getInet6Address_ipaddress(JNIEnv *env, jobject ia6Obj, char *dest);
+-extern int setInet6Address_ipaddress(JNIEnv *env, jobject ia6Obj, char *address);
++extern jboolean setInet6Address_scopeid(JNIEnv *env, jobject ia6Obj, int scopeid);
++extern jboolean getInet6Address_ipaddress(JNIEnv *env, jobject ia6Obj, char *dest);
++extern jboolean setInet6Address_ipaddress(JNIEnv *env, jobject ia6Obj, char *address);
+ 
+ extern void setInetAddress_addr(JNIEnv *env, jobject iaObj, int address);
+ extern void setInetAddress_family(JNIEnv *env, jobject iaObj, int family);
+diff --git a/jdk/src/solaris/native/java/net/Inet6AddressImpl.c b/jdk/src/solaris/native/java/net/Inet6AddressImpl.c
+index 0a51a365fd..dcc348cf1f 100644
+--- a/jdk/src/solaris/native/java/net/Inet6AddressImpl.c
++++ b/jdk/src/solaris/native/java/net/Inet6AddressImpl.c
+@@ -392,7 +392,7 @@ Java_java_net_Inet6AddressImpl_lookupAllHostAddr(JNIEnv *env, jobject this,
+         }
+ 
+         while (iterator != NULL) {
+-            int ret1;
++            jboolean ret1;
+             if (iterator->ai_family == AF_INET) {
+                 jobject iaObj = (*env)->NewObject(env, ia4_class, ia4_ctrID);
+                 if (IS_NULL(iaObj)) {
+@@ -416,7 +416,7 @@ Java_java_net_Inet6AddressImpl_lookupAllHostAddr(JNIEnv *env, jobject this,
+                     goto cleanupAndReturn;
+                 }
+                 ret1 = setInet6Address_ipaddress(env, iaObj, (char *)&(((struct sockaddr_in6*)iterator->ai_addr)->sin6_addr));
+-                if (!ret1) {
++                if (ret1 == JNI_FALSE) {
+                     ret = NULL;
+                     goto cleanupAndReturn;
+                 }
+-- 
+2.26.2
+

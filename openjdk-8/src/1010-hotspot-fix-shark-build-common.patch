@@ -1,0 +1,448 @@
+From 3028795037c3440415f3e8904e8015fbd480ab15 Mon Sep 17 00:00:00 2001
+From: Jens Rehsack <rehsack@gmail.com>
+Date: Thu, 2 Jan 2020 10:22:19 +0100
+Subject: [PATCH 1010/1013] hotspot: fix shark build (common)
+
+Signed-off-by: Richard Leitner <richard.leitner@skidata.com>
+---
+ make/Makefile                               |  2 +-
+ src/cpu/zero/vm/interpreter_zero.cpp        |  2 +-
+ src/share/vm/ci/ciTypeFlow.cpp              |  4 ++
+ src/share/vm/classfile/systemDictionary.cpp |  4 ++
+ src/share/vm/runtime/handles.inline.hpp     |  8 +++-
+ src/share/vm/shark/llvmHeaders.hpp          |  4 ++
+ src/share/vm/shark/sharkCompiler.cpp        | 39 ++++++++++++++++---
+ src/share/vm/shark/sharkCompiler.hpp        |  2 +
+ src/share/vm/shark/sharkContext.cpp         |  9 ++++-
+ src/share/vm/shark/sharkContext.hpp         | 43 ++++++++++++++++++++-
+ src/share/vm/shark/sharkEntry.hpp           |  1 +
+ src/share/vm/shark/sharkIntrinsics.cpp      |  4 ++
+ src/share/vm/shark/sharkRuntime.cpp         |  1 +
+ src/share/vm/shark/sharkTopLevelBlock.cpp   | 12 ++++++
+ 14 files changed, 123 insertions(+), 12 deletions(-)
+
+diff --git a/hotspot/make/Makefile b/hotspot/make/Makefile
+index ad195763b..53b5ea046 100644
+--- a/hotspot/make/Makefile
++++ b/hotspot/make/Makefile
+@@ -525,7 +525,7 @@ $(EXPORT_INCLUDE_DIR)/%:			$(SHARK_BUILD_DIR)/../generated/jvmtifiles/%
+ # Unix
+ $(EXPORT_JRE_LIB_ARCH_DIR)/%.$(LIBRARY_SUFFIX): $(SHARK_BUILD_DIR)/%.$(LIBRARY_SUFFIX)
+ 	$(install-file)
+-$(EXPORT_JRE_LIB_ARCH_DIR)/%.debuginfo):	$(SHARK_BUILD_DIR)/%.debuginfo
++$(EXPORT_JRE_LIB_ARCH_DIR)/%.debuginfo:		$(SHARK_BUILD_DIR)/%.debuginfo
+ 	$(install-file)
+ $(EXPORT_JRE_LIB_ARCH_DIR)/%.diz:		$(SHARK_BUILD_DIR)/%.diz
+ 	$(install-file)
+diff --git a/hotspot/src/cpu/zero/vm/interpreter_zero.cpp b/hotspot/src/cpu/zero/vm/interpreter_zero.cpp
+index 7172443db..5a4b4ad56 100644
+--- a/hotspot/src/cpu/zero/vm/interpreter_zero.cpp
++++ b/hotspot/src/cpu/zero/vm/interpreter_zero.cpp
+@@ -49,7 +49,7 @@
+ #ifdef COMPILER1
+ #include "c1/c1_Runtime1.hpp"
+ #endif
+-#ifdef CC_INTERP
++#if defined(CC_INTERP) || defined(SHARK)
+ #include "interpreter/cppInterpreter.hpp"
+ #endif
+ 
+diff --git a/hotspot/src/share/vm/ci/ciTypeFlow.cpp b/hotspot/src/share/vm/ci/ciTypeFlow.cpp
+index 4707cc96e..a2b297ca0 100644
+--- a/hotspot/src/share/vm/ci/ciTypeFlow.cpp
++++ b/hotspot/src/share/vm/ci/ciTypeFlow.cpp
+@@ -35,8 +35,10 @@
+ #include "interpreter/bytecode.hpp"
+ #include "interpreter/bytecodes.hpp"
+ #include "memory/allocation.inline.hpp"
++#ifdef COMPILER2
+ #include "opto/compile.hpp"
+ #include "opto/node.hpp"
++#endif
+ #include "runtime/deoptimization.hpp"
+ #include "utilities/growableArray.hpp"
+ 
+@@ -2648,6 +2650,7 @@ void ciTypeFlow::df_flow_types(Block* start,
+       assert (!blk->has_pre_order(), "");
+       blk->set_next_pre_order();
+ 
++#ifdef COMPILER2
+       if (_next_pre_order >= (int)Compile::current()->max_node_limit() / 2) {
+         // Too many basic blocks.  Bail out.
+         // This can happen when try/finally constructs are nested to depth N,
+@@ -2657,6 +2660,7 @@ void ciTypeFlow::df_flow_types(Block* start,
+         record_failure("too many basic blocks");
+         return;
+       }
++#endif
+       if (do_flow) {
+         flow_block(blk, temp_vector, temp_set);
+         if (failing()) return; // Watch for bailouts.
+diff --git a/hotspot/src/share/vm/classfile/systemDictionary.cpp b/hotspot/src/share/vm/classfile/systemDictionary.cpp
+index 98412e1e1..f62731c43 100644
+--- a/hotspot/src/share/vm/classfile/systemDictionary.cpp
++++ b/hotspot/src/share/vm/classfile/systemDictionary.cpp
+@@ -2392,6 +2392,7 @@ methodHandle SystemDictionary::find_method_handle_intrinsic(vmIntrinsics::ID iid
+     spe = NULL;
+     // Must create lots of stuff here, but outside of the SystemDictionary lock.
+     m = Method::make_method_handle_intrinsic(iid, signature, CHECK_(empty));
++#ifndef SHARK
+     if (!Arguments::is_interpreter_only()) {
+       // Generate a compiled form of the MH intrinsic.
+       AdapterHandlerLibrary::create_native_wrapper(m);
+@@ -2401,6 +2402,7 @@ methodHandle SystemDictionary::find_method_handle_intrinsic(vmIntrinsics::ID iid
+                    "out of space in CodeCache for method handle intrinsic", empty);
+       }
+     }
++#endif
+     // Now grab the lock.  We might have to throw away the new method,
+     // if a racing thread has managed to install one at the same time.
+     {
+@@ -2414,9 +2416,11 @@ methodHandle SystemDictionary::find_method_handle_intrinsic(vmIntrinsics::ID iid
+   }
+ 
+   assert(spe != NULL && spe->method() != NULL, "");
++#ifndef SHARK
+   assert(Arguments::is_interpreter_only() || (spe->method()->has_compiled_code() &&
+          spe->method()->code()->entry_point() == spe->method()->from_compiled_entry()),
+          "MH intrinsic invariant");
++#endif
+   return spe->method();
+ }
+ 
+diff --git a/hotspot/src/share/vm/runtime/handles.inline.hpp b/hotspot/src/share/vm/runtime/handles.inline.hpp
+index 761596a50..ca950c154 100644
+--- a/hotspot/src/share/vm/runtime/handles.inline.hpp
++++ b/hotspot/src/share/vm/runtime/handles.inline.hpp
+@@ -51,6 +51,12 @@ inline Handle::Handle(Thread* thread, oop obj) {
+ }
+ #endif // ASSERT
+ 
++#ifdef SHARK
++#define assert_on_stack(expr) (void)(expr)
++#else
++#define assert_on_stack(expr) assert((expr), "not on stack?")
++#endif
++
+ // Constructors for metadata handles
+ #define DEF_METADATA_HANDLE_FN(name, type) \
+ inline name##Handle::name##Handle(type* obj) : _value(obj), _thread(NULL) {       \
+@@ -79,7 +85,7 @@ inline name##Handle::name##Handle(const name##Handle &h) {             \
+     } else {                                                           \
+       _thread = Thread::current();                                     \
+     }                                                                  \
+-    assert (_thread->is_in_stack((address)this), "not on stack?");     \
++    assert_on_stack (_thread->is_in_stack((address)this));             \
+     _thread->metadata_handles()->push((Metadata*)_value);              \
+   } else {                                                             \
+     _thread = NULL;                                                    \
+diff --git a/hotspot/src/share/vm/shark/llvmHeaders.hpp b/hotspot/src/share/vm/shark/llvmHeaders.hpp
+index 05ef7fea1..4d40ae3dd 100644
+--- a/hotspot/src/share/vm/shark/llvmHeaders.hpp
++++ b/hotspot/src/share/vm/shark/llvmHeaders.hpp
+@@ -35,7 +35,11 @@
+   #undef DEBUG
+ #endif
+ 
++#if SHARK_LLVM_VERSION <= 34
+ #include <llvm/Analysis/Verifier.h>
++#else
++#include <llvm-c/Analysis.h>
++#endif
+ #include <llvm/ExecutionEngine/ExecutionEngine.h>
+ 
+ // includes specific to each version
+diff --git a/hotspot/src/share/vm/shark/sharkCompiler.cpp b/hotspot/src/share/vm/shark/sharkCompiler.cpp
+index 86c09932a..462eb98a7 100644
+--- a/hotspot/src/share/vm/shark/sharkCompiler.cpp
++++ b/hotspot/src/share/vm/shark/sharkCompiler.cpp
+@@ -61,11 +61,25 @@ SharkCompiler::SharkCompiler()
+   : AbstractCompiler() {
+   // Create the lock to protect the memory manager and execution engine
+   _execution_engine_lock = new Monitor(Mutex::leaf, "SharkExecutionEngineLock");
+-  MutexLocker locker(execution_engine_lock());
++  {
++    MutexLocker locker(execution_engine_lock());
++    init_llvm();
++  }
++  // All done
++  set_state(initialized);
++}
+ 
++void SharkCompiler::init_llvm() {
++  // with llvm 3.5, Multi-threading can only be enabled/disabled with the
++  // compile time define LLVM_ENABLE_THREADS
++#if SHARK_LLVM_VERSION <= 34
+   // Make LLVM safe for multithreading
+   if (!llvm_start_multithreaded())
+     fatal("llvm_start_multithreaded() failed");
++#else
++  if (!llvm_is_multithreaded())
++    fatal("llvm_is_multithreaded() tells no multithreading support in llvm");
++#endif
+ 
+   // Initialize the native target
+   InitializeNativeTarget();
+@@ -83,7 +97,7 @@ SharkCompiler::SharkCompiler()
+   // Finetune LLVM for the current host CPU.
+   StringMap<bool> Features;
+   bool gotCpuFeatures = llvm::sys::getHostCPUFeatures(Features);
+-  std::string cpu("-mcpu=" + llvm::sys::getHostCPUName());
++  std::string cpu("-mcpu=" + std::string(llvm::sys::getHostCPUName()));
+ 
+   std::vector<const char*> args;
+   args.push_back(""); // program name
+@@ -112,6 +126,9 @@ SharkCompiler::SharkCompiler()
+   builder.setMAttrs(MAttrs);
+   builder.setJITMemoryManager(memory_manager());
+   builder.setEngineKind(EngineKind::JIT);
++#if SHARK_LLVM_VERSION > 34
++  builder.setUseMCJIT(true);
++#endif
+   builder.setErrorStr(&ErrorMsg);
+   if (! fnmatch(SharkOptimizationLevel, "None", 0)) {
+     tty->print_cr("Shark optimization level set to: None");
+@@ -133,10 +150,11 @@ SharkCompiler::SharkCompiler()
+     exit(1);
+   }
+ 
++#if SHARK_LLVM_VERSION > 34
++  _native_context->execution_engine(_execution_engine);
++  _normal_context->execution_engine(_execution_engine);
++#endif
+   execution_engine()->addModule(_native_context->module());
+-
+-  // All done
+-  set_state(initialized);
+ }
+ 
+ void SharkCompiler::initialize() {
+@@ -165,7 +183,7 @@ void SharkCompiler::compile_method(ciEnv*    env,
+   }
+ 
+   // Create the recorders
+-  Arena arena;
++  Arena arena(mtCompiler);
+   env->set_oop_recorder(new OopRecorder(&arena));
+   OopMapSet oopmaps;
+   env->set_debug_info(new DebugInformationRecorder(env->oop_recorder()));
+@@ -268,7 +286,12 @@ void SharkCompiler::generate_native_code(SharkEntry* entry,
+ 
+   if (SharkVerifyFunction != NULL) {
+     if (!fnmatch(SharkVerifyFunction, name, 0)) {
++#if SHARK_LLVM_VERSION <= 34
+       verifyFunction(*function);
++#else
++      LLVMValueRef F = wrap(function);
++      LLVMVerifyFunction(F, LLVMAbortProcessAction);
++#endif
+     }
+   }
+ 
+@@ -298,7 +321,11 @@ void SharkCompiler::generate_native_code(SharkEntry* entry,
+ #endif
+ #endif // !NDEBUG
+     memory_manager()->set_entry_for_function(function, entry);
++#if SHARK_LLVM_VERSION <= 34
+     code = (address) execution_engine()->getPointerToFunction(function);
++#else
++    code = (address) execution_engine()->getFunctionAddress(name);
++#endif
+   }
+   assert(code != NULL, "code must be != NULL");
+   entry->set_entry_point(code);
+diff --git a/hotspot/src/share/vm/shark/sharkCompiler.hpp b/hotspot/src/share/vm/shark/sharkCompiler.hpp
+index 974002988..36b5b2427 100644
+--- a/hotspot/src/share/vm/shark/sharkCompiler.hpp
++++ b/hotspot/src/share/vm/shark/sharkCompiler.hpp
+@@ -40,6 +40,8 @@ class SharkCompiler : public AbstractCompiler {
+   // Creation
+   SharkCompiler();
+ 
++  void init_llvm();
++
+   // Name of this compiler
+   const char *name()     { return "shark"; }
+ 
+diff --git a/hotspot/src/share/vm/shark/sharkContext.cpp b/hotspot/src/share/vm/shark/sharkContext.cpp
+index 0fc86f0b1..e16318ccf 100644
+--- a/hotspot/src/share/vm/shark/sharkContext.cpp
++++ b/hotspot/src/share/vm/shark/sharkContext.cpp
+@@ -34,8 +34,13 @@
+ using namespace llvm;
+ 
+ SharkContext::SharkContext(const char* name)
+-  : LLVMContext(),
+-    _free_queue(NULL) {
++  : LLVMContext()
++  , _free_queue(0)
++#if SHARK_LLVM_VERSION > 34
++  , _ee(0)
++  , func_mod_map()
++#endif
++{
+   // Create a module to build our functions into
+   _module = new Module(name, *this);
+ 
+diff --git a/hotspot/src/share/vm/shark/sharkContext.hpp b/hotspot/src/share/vm/shark/sharkContext.hpp
+index 952cf13b7..85b48e99a 100644
+--- a/hotspot/src/share/vm/shark/sharkContext.hpp
++++ b/hotspot/src/share/vm/shark/sharkContext.hpp
+@@ -29,6 +29,8 @@
+ #include "shark/llvmHeaders.hpp"
+ #include "shark/sharkCompiler.hpp"
+ 
++#include <map>
++
+ // The LLVMContext class allows multiple instances of LLVM to operate
+ // independently of each other in a multithreaded context.  We extend
+ // this here to store things in Shark that are LLVMContext-specific.
+@@ -41,12 +43,28 @@ class SharkContext : public llvm::LLVMContext {
+ 
+  private:
+   llvm::Module* _module;
++#if SHARK_LLVM_VERSION > 34
++  llvm::ExecutionEngine *_ee;
++  std::map<std::string, llvm::Module *> func_mod_map;
++#endif
+ 
+  public:
+   llvm::Module* module() const {
+     return _module;
+   }
+ 
++#if SHARK_LLVM_VERSION > 34
++  llvm::ExecutionEngine *execution_engine(llvm::ExecutionEngine *ee) {
++      llvm::ExecutionEngine *oee = _ee;
++      _ee = ee;
++      return oee;
++  }
++
++  llvm::ExecutionEngine *execution_engine() const {
++      return _ee;
++  }
++#endif
++
+   // Get this thread's SharkContext
+  public:
+   static SharkContext& current() {
+@@ -55,12 +73,35 @@ class SharkContext : public llvm::LLVMContext {
+ 
+   // Module accessors
+  public:
+-  void add_function(llvm::Function* function) const {
++  void add_function(llvm::Function* function) {
++#if SHARK_LLVM_VERSION <= 34
+     module()->getFunctionList().push_back(function);
++#else
++    // shark compiles modules, not functions
++    std::map<std::string, llvm::Module *>::iterator i = func_mod_map.find(function->getName().str());
++    if(func_mod_map.end() == i) {
++	llvm::Module *mod4fun = new llvm::Module(function->getName(), *this);
++	func_mod_map.insert(std::pair<std::string, llvm::Module *>(function->getName().str(), mod4fun));
++	mod4fun->getFunctionList().push_back(function);
++	_ee->addModule(mod4fun);
++    }
++#endif
+   }
+   llvm::Constant* get_external(const char*               name,
+                                llvm::FunctionType* sig) {
++    // XXX see whether we need additional module map, too
++#if SHARK_LLVM_VERSION <= 34
+     return module()->getOrInsertFunction(name, sig);
++#else
++    // shark compiles modules, not functions
++    std::map<std::string, llvm::Module *>::iterator i = func_mod_map.find(name);
++    if(func_mod_map.end() == i) {
++	llvm::Module *mod4fun = new llvm::Module(name, *this);
++	func_mod_map.insert(std::pair<std::string, llvm::Module *>(name, mod4fun));
++	mod4fun->getOrInsertFunction(name, sig);
++	_ee->addModule(mod4fun);
++    }
++#endif
+   }
+ 
+   // Basic types
+diff --git a/hotspot/src/share/vm/shark/sharkEntry.hpp b/hotspot/src/share/vm/shark/sharkEntry.hpp
+index e0f535c69..c079e255a 100644
+--- a/hotspot/src/share/vm/shark/sharkEntry.hpp
++++ b/hotspot/src/share/vm/shark/sharkEntry.hpp
+@@ -27,6 +27,7 @@
+ #define SHARE_VM_SHARK_SHARKENTRY_HPP
+ 
+ #include "shark/llvmHeaders.hpp"
++#include "entry_zero.hpp"
+ 
+ class SharkContext;
+ 
+diff --git a/hotspot/src/share/vm/shark/sharkIntrinsics.cpp b/hotspot/src/share/vm/shark/sharkIntrinsics.cpp
+index 9ad91c96d..560bb83f4 100644
+--- a/hotspot/src/share/vm/shark/sharkIntrinsics.cpp
++++ b/hotspot/src/share/vm/shark/sharkIntrinsics.cpp
+@@ -265,7 +265,11 @@ void SharkIntrinsics::do_Unsafe_compareAndSwapInt() {
+     "addr");
+ 
+   // Perform the operation
++#if SHARK_LLVM_VERSION <= 34
+   Value *result = builder()->CreateAtomicCmpXchg(addr, e, x, llvm::SequentiallyConsistent);
++#else
++  Value *result = builder()->CreateAtomicCmpXchg(addr, e, x, llvm::SequentiallyConsistent, llvm::SequentiallyConsistent);
++  #endif
+   // Push the result
+   state()->push(
+     SharkValue::create_jint(
+diff --git a/hotspot/src/share/vm/shark/sharkRuntime.cpp b/hotspot/src/share/vm/shark/sharkRuntime.cpp
+index fd9916e11..1ae03753e 100644
+--- a/hotspot/src/share/vm/shark/sharkRuntime.cpp
++++ b/hotspot/src/share/vm/shark/sharkRuntime.cpp
+@@ -32,6 +32,7 @@
+ #ifdef TARGET_ARCH_zero
+ # include "stack_zero.inline.hpp"
+ #endif
++#include "memory/oopFactory.hpp"
+ 
+ using namespace llvm;
+ 
+diff --git a/hotspot/src/share/vm/shark/sharkTopLevelBlock.cpp b/hotspot/src/share/vm/shark/sharkTopLevelBlock.cpp
+index 243183c07..601ca7925 100644
+--- a/hotspot/src/share/vm/shark/sharkTopLevelBlock.cpp
++++ b/hotspot/src/share/vm/shark/sharkTopLevelBlock.cpp
+@@ -1732,7 +1732,11 @@ void SharkTopLevelBlock::do_new() {
+     heap_object = builder()->CreateIntToPtr(
+       old_top, SharkType::oop_type(), "heap_object");
+ 
++#if SHARK_LLVM_VERSION <= 34
+     Value *check = builder()->CreateAtomicCmpXchg(top_addr, old_top, new_top, llvm::SequentiallyConsistent);
++#else
++    Value *check = builder()->CreateAtomicCmpXchg(top_addr, old_top, new_top, llvm::SequentiallyConsistent, llvm::SequentiallyConsistent);
++#endif
+     builder()->CreateCondBr(
+       builder()->CreateICmpEQ(old_top, check),
+       initialize, retry);
+@@ -1933,7 +1937,11 @@ void SharkTopLevelBlock::acquire_lock(Value *lockee, int exception_action) {
+ 
+   Value *lock = builder()->CreatePtrToInt(
+     monitor_header_addr, SharkType::intptr_type());
++#if SHARK_LLVM_VERSION <= 34
+   Value *check = builder()->CreateAtomicCmpXchg(mark_addr, disp, lock, llvm::Acquire);
++#else
++  Value *check = builder()->CreateAtomicCmpXchg(mark_addr, disp, lock, llvm::Acquire, llvm::Acquire);
++#endif
+   builder()->CreateCondBr(
+     builder()->CreateICmpEQ(disp, check),
+     acquired_fast, try_recursive);
+@@ -2018,7 +2026,11 @@ void SharkTopLevelBlock::release_lock(int exception_action) {
+     PointerType::getUnqual(SharkType::intptr_type()),
+     "mark_addr");
+ 
++#if SHARK_LLVM_VERSION <= 34
+   Value *check = builder()->CreateAtomicCmpXchg(mark_addr, lock, disp, llvm::Release);
++#else
++  Value *check = builder()->CreateAtomicCmpXchg(mark_addr, lock, disp, llvm::Release, llvm::Monotonic);
++#endif
+   builder()->CreateCondBr(
+     builder()->CreateICmpEQ(lock, check),
+     released_fast, slow_path);
+-- 
+2.26.2
+

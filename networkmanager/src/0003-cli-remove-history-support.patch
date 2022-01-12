@@ -1,0 +1,54 @@
+From 63803e1014f3998c34f0123c36f6aea5506933f8 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?J=C3=A9r=C3=B4me=20Oufella?=
+ <jerome.oufella@savoirfairelinux.com>
+Date: Tue, 4 Jan 2022 18:31:50 -0500
+Subject: [PATCH 3/3] cli: remove history support
+
+---
+ clients/cli/common.c | 9 ---------
+ 1 file changed, 9 deletions(-)
+
+diff --git a/clients/cli/common.c b/clients/cli/common.c
+index 1e943cf865..aa7b444024 100644
+--- a/clients/cli/common.c
++++ b/clients/cli/common.c
+@@ -898,10 +898,6 @@ read_again:
+ 		}
+ 	}
+ 
+-	/* Add string to the history */
+-	if (rl_string && *rl_string)
+-		add_history (rl_string);
+-
+ 	if (nmc_seen_sigint ()) {
+ 		/* Ctrl-C */
+ 		nmc_clear_sigint ();
+@@ -1002,8 +998,6 @@ nmc_readline_echo (const NmcConfig *nmc_config,
+ 	va_list args;
+ 	gs_free char *prompt = NULL;
+ 	char *str;
+-	HISTORY_STATE *saved_history;
+-	HISTORY_STATE passwd_history = { 0, };
+ 
+ 	va_start (args, prompt_fmt);
+ 	prompt = g_strdup_vprintf (prompt_fmt, args);
+@@ -1013,8 +1007,6 @@ nmc_readline_echo (const NmcConfig *nmc_config,
+ 
+ 	/* Hide the actual password */
+ 	if (!echo_on) {
+-		saved_history = history_get_history_state ();
+-		history_set_history_state (&passwd_history);
+ 		rl_redisplay_function = nmc_secret_redisplay;
+ 	}
+ 
+@@ -1023,7 +1015,6 @@ nmc_readline_echo (const NmcConfig *nmc_config,
+ 	/* Restore the non-hiding behavior */
+ 	if (!echo_on) {
+ 		rl_redisplay_function = rl_redisplay;
+-		history_set_history_state (saved_history);
+ 	}
+ 
+ 	return str;
+-- 
+2.25.4
+

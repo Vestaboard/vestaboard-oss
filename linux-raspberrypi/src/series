@@ -1,0 +1,4 @@
+0001-Revert-selftests-bpf-Skip-perf-hw-events-test-if-the.patch -p1
+0002-Revert-selftests-bpf-Fix-perf_buffer-test-on-systems.patch -p1
+0001-bcm2835-mmc-print-message-on-crc-timeout-error.patch -p1
+0002-brcmfmac-make-sdio-drive-strength-configurable-via-p.patch -p1

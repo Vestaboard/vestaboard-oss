@@ -1,0 +1,25 @@
+From def92aa795271fa3e6fd36009d89e06009d21c6a Mon Sep 17 00:00:00 2001
+From: Jens Rehsack <rehsack@gmail.com>
+Date: Thu, 2 Jan 2020 13:44:25 +0100
+Subject: [PATCH 05/13] autoconf: filter aclocal copy too
+
+Signed-off-by: Richard Leitner <richard.leitner@skidata.com>
+---
+ common/autoconf/basics.m4 | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/common/autoconf/basics.m4 b/common/autoconf/basics.m4
+index c20ea76..8e06cd2 100644
+--- a/common/autoconf/basics.m4
++++ b/common/autoconf/basics.m4
+@@ -636,6 +636,7 @@ AC_DEFUN_ONCE([BASIC_SETUP_OUTPUT_DIR],
+           | $SED -e 's/config.log//g' \
+ 	      -e 's/confdefs.h//g' \
+ 	      -e 's/fixpath.exe//g' \
++	      -e 's,aclocal-copy,,g' \
+ 	      -e 's/ //g' \
+           | $TR -d '\n'`
+       if test "x$filtered_files" != x; then
+-- 
+2.26.2
+

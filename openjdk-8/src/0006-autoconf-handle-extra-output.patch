@@ -1,0 +1,30 @@
+From ee5e07895570a9ea2ae2490f3b159bde29967238 Mon Sep 17 00:00:00 2001
+From: Haiqing Bai <Haiqing.Bai@windriver.com>
+Date: Thu, 2 Jan 2020 13:45:42 +0100
+Subject: [PATCH 06/13] autoconf: handle extra output
+
+When adding the environment variable JAVA_TOOL_OPTIONS an extra line
+in the output from 'java -version' is produced. As this output is
+parsed by configure script the extra line has to be filtered out.
+
+Signed-off-by: Richard Leitner <richard.leitner@skidata.com>
+---
+ common/autoconf/boot-jdk.m4 | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/common/autoconf/boot-jdk.m4 b/common/autoconf/boot-jdk.m4
+index 5be15b8..0d1a6e1 100644
+--- a/common/autoconf/boot-jdk.m4
++++ b/common/autoconf/boot-jdk.m4
+@@ -51,7 +51,7 @@ AC_DEFUN([BOOTJDK_DO_CHECK],
+             BOOT_JDK_FOUND=no
+           else
+             # Oh, this is looking good! We probably have found a proper JDK. Is it the correct version?
+-            BOOT_JDK_VERSION=`"$BOOT_JDK/bin/java" -version 2>&1 | head -n 1`
++            BOOT_JDK_VERSION=`"$BOOT_JDK/bin/java" -version 2>&1 | grep -v JAVA_TOOL_OPTIONS | head -n 1`
+ 
+             # Extra M4 quote needed to protect [] in grep expression.
+             [FOUND_VERSION_78=`echo $BOOT_JDK_VERSION | grep  '\"1\.[78]\.'`]
+-- 
+2.26.2
+

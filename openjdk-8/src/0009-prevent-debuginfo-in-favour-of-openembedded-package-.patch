@@ -1,0 +1,154 @@
+From a2a8f8df244efca22da633b676a45d62b2fbb580 Mon Sep 17 00:00:00 2001
+From: Jens Rehsack <rehsack@gmail.com>
+Date: Thu, 2 Jan 2020 13:53:50 +0100
+Subject: [PATCH 09/13] prevent debuginfo in favour of openembedded package
+ split
+
+Signed-off-by: Richard Leitner <richard.leitner@skidata.com>
+---
+ make/common/NativeCompilation.gmk | 122 ------------------------------
+ 1 file changed, 122 deletions(-)
+
+diff --git a/make/common/NativeCompilation.gmk b/make/common/NativeCompilation.gmk
+index 46a1be9..b4ea2c6 100644
+--- a/make/common/NativeCompilation.gmk
++++ b/make/common/NativeCompilation.gmk
+@@ -456,67 +456,6 @@ define SetupNativeCompilation
+ 		$(CP) $$< $$@
+         endif
+ 
+-        ifneq ($(OPENJDK_TARGET_OS), macosx)   # OBJCOPY is not used on MacOS X
+-          ifneq ($(OPENJDK_TARGET_OS), windows)  # nor on Windows
+-            ifeq ($(OPENJDK_TARGET_OS), solaris)
+-              ifneq ($$($1_STRIP_POLICY), no_strip)
+-                # gobjcopy crashes on "empty" section headers with the SHF_ALLOC flag set.
+-                # Use $(FIX_EMPTY_SEC_HDR_FLAGS) to clear the SHF_ALLOC flag (if set) from
+-                # empty section headers until a fixed $(OBJCOPY) is available.
+-                # An empty section header has sh_addr == 0 and sh_size == 0.
+-                # This problem has only been seen on Solaris X64, but we call this tool
+-                # on all Solaris builds just in case.
+-                #
+-                # $(OBJCOPY) --add-gnu-debuglink=... corrupts SUNW_* sections.
+-                # Use $(ADD_GNU_DEBUGLINK) until a fixed $(OBJCOPY) is available.
+-                $$($1_OBJECT_DIR)/$$(LIBRARY_PREFIX)$$($1_LIBRARY).debuginfo : $$($1_TARGET) \
+-				$(FIX_EMPTY_SEC_HDR_FLAGS) $(ADD_GNU_DEBUGLINK)
+-		$(RM) $$@
+-		$(FIX_EMPTY_SEC_HDR_FLAGS) $(LOG_INFO) $$<
+-		$(OBJCOPY) --only-keep-debug $$< $$@
+-		$(CD) $$(@D) && $(ADD_GNU_DEBUGLINK) $(LOG_INFO) $$(@F) $$<
+-              endif
+-            else # not solaris
+-              ifneq ($$($1_STRIP_POLICY), no_strip)
+-                $$($1_OBJECT_DIR)/$$(LIBRARY_PREFIX)$$($1_LIBRARY).debuginfo : $$($1_TARGET)
+-		$(RM) $$@
+-		$(OBJCOPY) --only-keep-debug $$< $$@
+-		$(CD) $$(@D) && $(OBJCOPY) --add-gnu-debuglink=$$(@F) $$<
+-              endif
+-            endif # Touch to not retrigger rule on rebuild
+-            ifneq ($$($1_STRIP_POLICY), no_strip)
+-		$(TOUCH) $$@
+-            endif
+-          endif # !windows
+-        endif # !macosx
+-
+-        ifeq ($(ZIP_DEBUGINFO_FILES), true)
+-ifneq ($(OPENJDK_TARGET_OS), macosx) # no MacOS X support yet
+-ifneq ($$($1_STRIP_POLICY), no_strip)
+-          $1 += $$($1_OUTPUT_DIR)/$$(LIBRARY_PREFIX)$$($1_LIBRARY).diz
+-
+-          ifeq ($(OPENJDK_TARGET_OS), windows)
+-            $$($1_OBJECT_DIR)/$$(LIBRARY_PREFIX)$$($1_LIBRARY).diz : $$($1_TARGET)
+-		$(CD) $$($1_OBJECT_DIR) \
+-		&& $(ZIP) -q $$@ $$($1_LIBRARY).map $$($1_LIBRARY).pdb
+-          else
+-            $$($1_OBJECT_DIR)/$$(LIBRARY_PREFIX)$$($1_LIBRARY).diz : $$($1_TARGET) \
+-                $$($1_OBJECT_DIR)/$$(LIBRARY_PREFIX)$$($1_LIBRARY).debuginfo
+-		$(CD) $$($1_OBJECT_DIR) \
+-		&& $(ZIP) -q $$@ $$(LIBRARY_PREFIX)$$($1_LIBRARY).debuginfo
+-          endif
+-endif # not possible when stripping is disabled
+-endif # no MacOS X support yet
+-        else
+-          ifeq ($(OPENJDK_TARGET_OS), windows)
+-            $1 += $$($1_OUTPUT_DIR)/$$($1_LIBRARY).map \
+-                $$($1_OUTPUT_DIR)/$$($1_LIBRARY).pdb
+-          else ifneq ($(OPENJDK_TARGET_OS), macosx) # MacOS X does not use .debuginfo files
+-            ifneq ($$($1_STRIP_POLICY), no_strip)
+-              $1 += $$($1_OUTPUT_DIR)/$$(LIBRARY_PREFIX)$$($1_LIBRARY).debuginfo
+-            endif
+-          endif
+-        endif
+       endif
+     endif
+ 
+@@ -550,67 +489,6 @@ endif # no MacOS X support yet
+ 		$(CP) $$< $$@
+         endif
+ 
+-        ifneq ($(OPENJDK_TARGET_OS), macosx)   # OBJCOPY is not used on MacOS X
+-          ifneq ($(OPENJDK_TARGET_OS), windows)  # nor on Windows
+-            ifeq ($(OPENJDK_TARGET_OS), solaris)
+-              ifneq ($$($1_STRIP_POLICY), no_strip)
+-                # gobjcopy crashes on "empty" section headers with the SHF_ALLOC flag set.
+-                # Use $(FIX_EMPTY_SEC_HDR_FLAGS) to clear the SHF_ALLOC flag (if set) from
+-                # empty section headers until a fixed $(OBJCOPY) is available.
+-                # An empty section header has sh_addr == 0 and sh_size == 0.
+-                # This problem has only been seen on Solaris X64, but we call this tool
+-                # on all Solaris builds just in case.
+-                #
+-                # $(OBJCOPY) --add-gnu-debuglink=... corrupts SUNW_* sections.
+-                # Use $(ADD_GNU_DEBUGLINK) until a fixed $(OBJCOPY) is available.
+-                $$($1_OBJECT_DIR)/$$($1_PROGRAM).debuginfo : $$($1_TARGET) \
+-				$(FIX_EMPTY_SEC_HDR_FLAGS) $(ADD_GNU_DEBUGLINK)
+-		$(RM) $$@
+-		$(FIX_EMPTY_SEC_HDR_FLAGS) $(LOG_INFO) $$<
+-		$(OBJCOPY) --only-keep-debug $$< $$@
+-		$(CD) $$(@D) && $(ADD_GNU_DEBUGLINK) $(LOG_INFO) $$(@F) $$<
+-              endif
+-            else # not solaris
+-              ifneq ($$($1_STRIP_POLICY), no_strip)
+-                $$($1_OBJECT_DIR)/$$($1_PROGRAM).debuginfo : $$($1_TARGET)
+-		$(RM) $$@
+-		$(OBJCOPY) --only-keep-debug $$< $$@
+-		$(CD) $$(@D) && $(OBJCOPY) --add-gnu-debuglink=$$(@F) $$<
+-              endif
+-            endif
+-            ifneq ($$($1_STRIP_POLICY), no_strip)
+-		$(TOUCH) $$@
+-            endif
+-          endif # !windows
+-        endif # !macosx
+-
+-        ifeq ($(ZIP_DEBUGINFO_FILES), true)
+-ifneq ($(OPENJDK_TARGET_OS), macosx) # no MacOS X support yet
+-ifneq ($$($1_STRIP_POLICY), no_strip)
+-          $1 += $$($1_OUTPUT_DIR)/$$($1_PROGRAM).diz
+-
+-          ifeq ($(OPENJDK_TARGET_OS), windows)
+-            $$($1_OBJECT_DIR)/$$($1_PROGRAM).diz : $$($1_TARGET)
+-		$(CD) $$($1_OBJECT_DIR) \
+-		&& $(ZIP) -q $$@ $$($1_PROGRAM).map $$($1_PROGRAM).pdb
+-          else
+-            $$($1_OBJECT_DIR)/$$(PROGRAM_PREFIX)$$($1_PROGRAM).diz : $$($1_TARGET) \
+-                $$($1_OBJECT_DIR)/$$($1_PROGRAM).debuginfo
+-		$(CD) $$($1_OBJECT_DIR) \
+-		&& $(ZIP) -q $$@ $$($1_PROGRAM).debuginfo
+-          endif
+-endif
+-endif # no MacOS X support yet
+-        else
+-          ifeq ($(OPENJDK_TARGET_OS), windows)
+-            $1 += $$($1_OUTPUT_DIR)/$$($1_PROGRAM).map \
+-                $$($1_OUTPUT_DIR)/$$($1_PROGRAM).pdb
+-          else ifneq ($(OPENJDK_TARGET_OS), macosx) # MacOS X does not use .debuginfo files
+-            ifneq ($$($1_STRIP_POLICY), no_strip)
+-              $1 += $$($1_OUTPUT_DIR)/$$($1_PROGRAM).debuginfo
+-            endif
+-          endif
+-        endif
+       endif
+     endif
+ 
+-- 
+2.26.2
+

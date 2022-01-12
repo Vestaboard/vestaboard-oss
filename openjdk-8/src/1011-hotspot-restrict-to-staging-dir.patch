@@ -1,0 +1,26 @@
+From 364b8a715b96f069bf455894b0ae290c52d3ab19 Mon Sep 17 00:00:00 2001
+From: Jens Rehsack <rehsack@gmail.com>
+Date: Thu, 2 Jan 2020 10:23:38 +0100
+Subject: [PATCH 1011/1013] hotspot: restrict to staging dir
+
+Signed-off-by: Richard Leitner <richard.leitner@skidata.com>
+---
+ make/linux/makefiles/dtrace.make | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/hotspot/make/linux/makefiles/dtrace.make b/hotspot/make/linux/makefiles/dtrace.make
+index 386e94b1f..7642a67f8 100644
+--- a/hotspot/make/linux/makefiles/dtrace.make
++++ b/hotspot/make/linux/makefiles/dtrace.make
+@@ -40,7 +40,7 @@ else
+ ifneq ($(ALT_SDT_H),)
+   SDT_H_FILE = $(ALT_SDT_H)
+ else
+-  SDT_H_FILE = /usr/include/sys/sdt.h
++  SDT_H_FILE = $(SYS_ROOT)/usr/include/sys/sdt.h
+ endif
+ DTRACE_ENABLED = $(shell test -f $(SDT_H_FILE) && echo $(SDT_H_FILE))
+ REASON = "$(SDT_H_FILE) not found"
+-- 
+2.26.2
+

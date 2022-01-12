@@ -1,0 +1,5 @@
+0002-update-ca-certificates-use-SYSROOT.patch -p1
+0001-update-ca-certificates-don-t-use-Debianisms-in-run-p.patch -p1
+default-sysroot.patch -p1
+0003-update-ca-certificates-use-relative-symlinks-from-ET.patch -p1
+0001-Revert-mozilla-certdata2pem.py-print-a-warning-for-e.patch -p1

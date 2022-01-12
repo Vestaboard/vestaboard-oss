@@ -1,0 +1,46 @@
+From 07c75310fecbaec62a24a3ee98b4209e1bf9ff62 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Andr=C3=A9=20Draszik?= <git@andred.net>
+Date: Mon, 6 Jan 2020 13:31:50 +0000
+Subject: [PATCH] context: fix compilation with 64bit time_t on 32bit arches
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+In file included from ../../diffutils-2.8.1/src/diff.h:23,
+                 from ../../diffutils-2.8.1/src/context.c:23:
+../../diffutils-2.8.1/src/context.c: In function 'print_context_label':
+../../diffutils-2.8.1/src/system.h:41:52: error: size of array 'a' is negative
+   41 | #define verify(name, assertion) struct name { char a[(assertion) ? 1 : -1]; }
+      |                                                    ^
+../../diffutils-2.8.1/src/context.c:65:4: note: in expansion of macro 'verify'
+   65 |    verify (info_preserved, sizeof inf->stat.st_mtime <= sizeof sec);
+      |    ^~~~~~
+
+struct stat::st_mtime is a time_t and will not fit into a
+long (when 64bit time_t has been requested on a 32bit machine).
+
+Signed-off-by: André Draszik <git@andred.net>
+Upstream-Status: Inappropriate [fixing an old version]
+---
+ src/context.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/context.c b/src/context.c
+index 18d7023..d41efde 100644
+--- a/src/context.c
++++ b/src/context.c
+@@ -61,9 +61,9 @@ print_context_label (char const *mark,
+       int nsec = TIMESPEC_NS (inf->stat.st_mtim);
+       if (! (tm && nstrftime (buf, sizeof buf, time_format, tm, 0, nsec)))
+ 	{
+-	  long sec = inf->stat.st_mtime;
++	  time_t sec = inf->stat.st_mtime;
+ 	  verify (info_preserved, sizeof inf->stat.st_mtime <= sizeof sec);
+-	  sprintf (buf, "%ld.%.9d", sec, nsec);
++	  sprintf (buf, "%lld.%.9d", (long long) sec, nsec);
+ 	}
+       fprintf (outfile, "%s %s\t%s\n", mark, inf->name, buf);
+     }
+-- 
+2.23.0.rc1
+

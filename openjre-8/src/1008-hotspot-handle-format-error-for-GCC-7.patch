@@ -1,0 +1,34 @@
+From dc6db949f4140b2dd7d3dfe040984bdfd88f2ba0 Mon Sep 17 00:00:00 2001
+From: Andreas Obergschwandtner <andreas.obergschwandtner@skidata.com>
+Date: Fri, 21 Sep 2018 10:44:06 +0200
+Subject: [PATCH 1008/1013] hotspot: handle format error for GCC >= 7
+
+Upstream-Status: Pending
+
+Signed-off-by: Andreas Obergschwandtner <andreas.obergschwandtner@skidata.com>
+Signed-off-by: Richard Leitner <richard.leitner@skidata.com>
+---
+ src/share/vm/adlc/output_c.cpp | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/hotspot/src/share/vm/adlc/output_c.cpp b/hotspot/src/share/vm/adlc/output_c.cpp
+index 199169046..889b785c1 100644
+--- a/hotspot/src/share/vm/adlc/output_c.cpp
++++ b/hotspot/src/share/vm/adlc/output_c.cpp
+@@ -419,9 +419,11 @@ static int pipeline_res_mask_initializer(
+   for (i = maxcycleused; i > 0; i /= 10)
+     cycledigit++;
+ 
+-  int maskdigit = 0;
+-  for (i = rescount; i > 0; i /= 10)
++  int maskdigit = 1;
++  for (i = rescount / 10; i > 0; i /= 10)
+     maskdigit++;
++  if (maskdigit > 10)
++    maskdigit = 10;
+ 
+   static const char* pipeline_use_cycle_mask = "Pipeline_Use_Cycle_Mask";
+   static const char* pipeline_use_element    = "Pipeline_Use_Element";
+-- 
+2.26.2
+

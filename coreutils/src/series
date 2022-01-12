@@ -1,0 +1,13 @@
+gnulib_m4.patch -p1
+futimens.patch -p1
+coreutils-ls-x.patch -p1
+coreutils-6.9-cp-i-u.patch -p1
+coreutils-i18n.patch -p1
+coreutils-overflow.patch -p1
+coreutils-fix-install.patch -p1
+coreutils_fix_for_automake-1.12.patch -p1
+coreutils-fix-texinfo.patch -p1
+loadavg.patch -p1
+no-man.patch -p1
+build-don-t-need-charset.alias-when-building-for-mus.patch -p1
+no-su.patch -p1

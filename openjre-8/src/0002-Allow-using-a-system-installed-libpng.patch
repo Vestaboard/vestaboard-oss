@@ -1,0 +1,80 @@
+From 17413a1bca9a6c27e049122d65b0d4fa291a53ec Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Andr=C3=A9=20Draszik?= <andre.draszik@jci.com>
+Date: Thu, 2 Jan 2020 13:40:50 +0100
+Subject: [PATCH 02/13] Allow using a system-installed libpng
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Patch stolen (and some typos corrected) from debian patch,
+which itself was a backport from:
+  http://hg.openjdk.java.net/jdk9/jdk9/rev/bfc1c131e540
+  http://hg.openjdk.java.net/jdk9/jdk9/jdk/rev/5e503831b142
+
+Issues fixed on top of debian patch:
+  * the default when --with-libpng= is not given works
+  * using the bundled libpng works
+
+Upstream-Status: Backport
+
+Signed-off-by: André Draszik <andre.draszik@jci.com>
+Signed-off-by: Richard Leitner <richard.leitner@skidata.com>
+---
+ common/autoconf/libraries.m4 | 41 ++++++++++++++++++++++++++++++++++++
+ 1 file changed, 41 insertions(+)
+
+diff --git a/common/autoconf/libraries.m4 b/common/autoconf/libraries.m4
+index d2732eb..727f018 100644
+--- a/common/autoconf/libraries.m4
++++ b/common/autoconf/libraries.m4
+@@ -843,6 +843,47 @@ AC_DEFUN_ONCE([LIB_SETUP_MISC_LIBS],
+   fi
+   AC_SUBST(USE_EXTERNAL_LIBGIF)
+ 
++  ###############################################################################
++  #
++  # Check for the png library
++  #
++
++  AC_ARG_WITH(libpng, [AS_HELP_STRING([--with-libpng],
++     [use libpng from build system or OpenJDK source (system, bundled) @<:@bundled@:>@])])
++
++  AC_CHECK_LIB(png, png_sig_cmp,
++               [ LIBPNG_FOUND=yes ],
++               [ LIBPNG_FOUND=no ])
++
++  AC_MSG_CHECKING([for which libpng to use])
++
++  # default is bundled
++  DEFAULT_LIBPNG=bundled
++
++  #
++  # if user didn't specify, use DEFAULT_LIBPNG
++  #
++  if test "x${with_libpng}" = "x"; then
++      with_libpng=${DEFAULT_LIBPNG}
++  fi
++
++
++  if test "x${with_libpng}" = "xbundled"; then
++      USE_EXTERNAL_LIBPNG=false
++      AC_MSG_RESULT([bundled])
++  elif test "x${with_libpng}" = "xsystem"; then
++      if test "x${LIBPNG_FOUND}" = "xyes"; then
++          USE_EXTERNAL_LIBPNG=true
++          AC_MSG_RESULT([system])
++      else
++          AC_MSG_RESULT([system not found])
++          AC_MSG_ERROR([--with-libpng=system specified, but no libpng found!])
++      fi
++  else
++      AC_MSG_ERROR([Invalid value of --with-libpng: ${with_libpng}, use 'system' or 'bundled'])
++  fi
++  AC_SUBST(USE_EXTERNAL_LIBPNG)
++
+   ###############################################################################
+   #
+   # Check for the zlib library
+-- 
+2.26.2
+

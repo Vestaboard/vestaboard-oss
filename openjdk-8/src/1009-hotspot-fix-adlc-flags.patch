@@ -1,0 +1,43 @@
+From 486b1c46d80de99e0820cc6305477ab40ba4e13c Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Erkka=20K=C3=A4=C3=A4ri=C3=A4?= <erkka.kaaria@intel.com>
+Date: Thu, 2 Jan 2020 10:19:29 +0100
+Subject: [PATCH 1009/1013] hotspot: fix adlc flags
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+adlc is built using the native toolchain, not the crosscompiler. It however
+was incorrectly using flags meant for the crosscompiler.
+
+Upstream-Status: Inappropriate [Yocto-specific fixes]
+
+Signed-off-by: Erkka Kääriä <erkka.kaaria@intel.com>
+Signed-off-by: Richard Leitner <richard.leitner@skidata.com>
+---
+ make/linux/makefiles/adlc.make | 10 ++++++++++
+ 1 file changed, 10 insertions(+)
+
+diff --git a/hotspot/make/linux/makefiles/adlc.make b/hotspot/make/linux/makefiles/adlc.make
+index 92b8b9b39..ae0aa0082 100644
+--- a/hotspot/make/linux/makefiles/adlc.make
++++ b/hotspot/make/linux/makefiles/adlc.make
+@@ -28,6 +28,16 @@
+ 
+ include $(GAMMADIR)/make/$(Platform_os_family)/makefiles/rules.make
+ 
++# Yocto specific fix - remove target machine flags and replace them with
++# build machine flags, as this part is built using the native toolchain
++CXXFLAGS:=$(filter-out $(TARGET_CXXFLAGS),$(CXXFLAGS))
++CFLAGS:=$(filter-out $(TARGET_CFLAGS),$(CFLAGS))
++
++CXXFLAGS += $(BUILD_CXXFLAGS)
++CFLAGS += $(BUILD_CFLAGS)
++
++
++
+ # #########################################################################
+ 
+ # OUTDIR must be the same as AD_Dir = $(GENERATED)/adfiles in top.make:
+-- 
+2.26.2
+

@@ -1,0 +1,32 @@
+From 7448c928240aafbfec08a92530a150bc206673bf Mon Sep 17 00:00:00 2001
+From: Peter Kjellerstedt <pkj@axis.com>
+Date: Thu, 26 Apr 2018 02:40:52 +0200
+Subject: [PATCH] Make it build with compile time hardening enabled
+
+This avoids the following error:
+
+  src/diff3.c: In function 'output_diff3':
+  src/diff3.c:1405:5: error: format not a string literal and no format
+  arguments [-Werror=format-security]
+       fprintf (outputfile, line_prefix);
+       ^~~~~~~
+
+Upstream-Status: Inappropriate [legacy version]
+Signed-off-by: Peter Kjellerstedt <peter.kjellerstedt@axis.com>
+---
+ src/diff3.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/diff3.c b/src/diff3.c
+index f3d3dcf..7237dea 100644
+--- a/src/diff3.c
++++ b/src/diff3.c
+@@ -1402,7 +1402,7 @@ output_diff3 (FILE *outputfile, struct diff3_block *diff,
+ 	      line = 0;
+ 	      do
+ 		{
+-		  fprintf (outputfile, line_prefix);
++		  fprintf (outputfile, "%s", line_prefix);
+ 		  cp = D_RELNUM (ptr, realfile, line);
+ 		  length = D_RELLEN (ptr, realfile, line);
+ 		  fwrite (cp, sizeof (char), length, outputfile);

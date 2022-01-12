@@ -1,0 +1,32 @@
+From 6f76fb04370713bdae2485261d987448c9350179 Mon Sep 17 00:00:00 2001
+From: Jens Rehsack <rehsack@gmail.com>
+Date: Thu, 2 Jan 2020 13:25:12 +0100
+Subject: [PATCH 2007/2009] jdk: no genx11 in headless
+
+Signed-off-by: Richard Leitner <richard.leitner@skidata.com>
+---
+ make/GenerateSources.gmk | 8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
+
+diff --git a/jdk/make/GenerateSources.gmk b/jdk/make/GenerateSources.gmk
+index ba443f7da5..2170150aca 100644
+--- a/jdk/make/GenerateSources.gmk
++++ b/jdk/make/GenerateSources.gmk
+@@ -73,9 +73,11 @@ ifneq ($(OPENJDK_TARGET_OS), windows)
+     GENSRC += $(GENSRC_OSX_ICONS)
+   endif
+ 
+-  ifneq ($(OPENJDK_TARGET_OS), macosx)
+-    include gensrc/GensrcX11Wrappers.gmk
+-    GENSRC += $(GENSRC_X11WRAPPERS)
++  ifndef BUILD_HEADLESS_ONLY
++    ifneq ($(OPENJDK_TARGET_OS), macosx)
++      include gensrc/GensrcX11Wrappers.gmk
++      GENSRC += $(GENSRC_X11WRAPPERS)
++    endif
+   endif
+ endif
+ 
+-- 
+2.26.2
+

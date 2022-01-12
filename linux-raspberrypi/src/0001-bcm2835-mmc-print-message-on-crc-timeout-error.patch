@@ -1,0 +1,39 @@
+From 9ec72bbce9c611f82e7546906780355bf944697c Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?J=C3=A9r=C3=B4me=20Oufella?=
+ <jerome.oufella@savoirfairelinux.com>
+Date: Tue, 31 Aug 2021 18:32:40 -0400
+Subject: [PATCH 1/2] bcm2835-mmc: print message on crc/timeout error
+
+We need this log info to introspect transmission error's frequency.
+
+Signed-off-by: Jerome Oufella <jerome.oufella@savoirfairelinux.com>
+---
+ drivers/mmc/host/bcm2835-mmc.c | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
+
+diff --git a/drivers/mmc/host/bcm2835-mmc.c b/drivers/mmc/host/bcm2835-mmc.c
+index ba30cc4b2653..29924af8daa6 100644
+--- a/drivers/mmc/host/bcm2835-mmc.c
++++ b/drivers/mmc/host/bcm2835-mmc.c
+@@ -1000,6 +1000,18 @@ static irqreturn_t bcm2835_mmc_irq(int irq, void *dev_id)
+ 	}
+ 
+ 	do {
++		if (intmask & SDHCI_INT_CRC)
++			pr_err("%s: (brcmfmac) CRC error detected on CMD transfer\n",
++				mmc_hostname(host->mmc));
++
++		if (intmask & SDHCI_INT_DATA_CRC)
++			pr_err("%s: (brcmfmac) CRC error detected on DATA transfer\n",
++				mmc_hostname(host->mmc));
++
++		if (intmask & SDHCI_INT_DATA_TIMEOUT)
++			pr_err("%s: (brcmfmac) timeout detected on DATA transfer\n",
++				mmc_hostname(host->mmc));
++
+ 		/* Clear selected interrupts. */
+ 		mask = intmask & (SDHCI_INT_CMD_MASK | SDHCI_INT_DATA_MASK |
+ 				  SDHCI_INT_BUS_POWER);
+-- 
+2.25.4
+

@@ -1,0 +1,5 @@
+0001-Fixed-configure.ac-Fix-pkgconfig-sysroot-locations.patch -p1
+0002-Do-not-create-settings-settings-property-documentati.patch -p1
+0001-cli-remove-readline-dependencies-for-editline.patch -p1
+0002-cli-remove-readline-rl_complete_with_tilde_expansion.patch -p1
+0003-cli-remove-history-support.patch -p1

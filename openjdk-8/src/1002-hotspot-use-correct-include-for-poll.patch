@@ -1,0 +1,87 @@
+From e40d948b71ff33d74c6e1595a798f359fb673d8f Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Andr=C3=A9=20Draszik?= <andre.draszik@jci.com>
+Date: Tue, 27 Feb 2018 09:28:06 +0000
+Subject: [PATCH 1002/1013] hotspot: use correct include for poll
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Compiling against musl-libc gives the following warning (which is
+treated as error due to -Werror):
+.../recipe-sysroot/usr/include/sys/poll.h:1:2: error: #warning redirecting incorrect #include <sys/poll.h> to <poll.h> [-Werror=cpp]
+ #warning redirecting incorrect #include <sys/poll.h> to <poll.h>
+  ^~~~~~~
+etc.
+
+To use poll(), poll.h needs to be included, even on glibc - do so using
+the following command:
+    for i in $(git grep sys/poll\.h hotspot | cut -f 1 -d : | sort -u) ; do
+        sed -e 's,sys/poll\.h,poll.h,g' -i ${i}
+    done
+
+Upstream-Status: Pending
+
+Signed-off-by: André Draszik <andre.draszik@jci.com>
+Signed-off-by: Richard Leitner <richard.leitner@skidata.com>
+---
+ src/os/aix/vm/os_aix.inline.hpp         | 2 +-
+ src/os/bsd/vm/os_bsd.inline.hpp         | 2 +-
+ src/os/linux/vm/os_linux.inline.hpp     | 2 +-
+ src/os/solaris/vm/os_solaris.inline.hpp | 2 +-
+ 4 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/hotspot/src/os/aix/vm/os_aix.inline.hpp b/hotspot/src/os/aix/vm/os_aix.inline.hpp
+index 421ea342e..9a1e1e096 100644
+--- a/hotspot/src/os/aix/vm/os_aix.inline.hpp
++++ b/hotspot/src/os/aix/vm/os_aix.inline.hpp
+@@ -34,7 +34,7 @@
+ 
+ #include <unistd.h>
+ #include <sys/socket.h>
+-#include <sys/poll.h>
++#include <poll.h>
+ #include <sys/ioctl.h>
+ #include <netdb.h>
+ 
+diff --git a/hotspot/src/os/bsd/vm/os_bsd.inline.hpp b/hotspot/src/os/bsd/vm/os_bsd.inline.hpp
+index c35abf486..8ff584aee 100644
+--- a/hotspot/src/os/bsd/vm/os_bsd.inline.hpp
++++ b/hotspot/src/os/bsd/vm/os_bsd.inline.hpp
+@@ -33,7 +33,7 @@
+ 
+ #include <unistd.h>
+ #include <sys/socket.h>
+-#include <sys/poll.h>
++#include <poll.h>
+ #include <netdb.h>
+ 
+ inline void* os::thread_local_storage_at(int index) {
+diff --git a/hotspot/src/os/linux/vm/os_linux.inline.hpp b/hotspot/src/os/linux/vm/os_linux.inline.hpp
+index a23bd5631..9d56de0ef 100644
+--- a/hotspot/src/os/linux/vm/os_linux.inline.hpp
++++ b/hotspot/src/os/linux/vm/os_linux.inline.hpp
+@@ -33,7 +33,7 @@
+ 
+ #include <unistd.h>
+ #include <sys/socket.h>
+-#include <sys/poll.h>
++#include <poll.h>
+ #include <netdb.h>
+ 
+ inline void* os::thread_local_storage_at(int index) {
+diff --git a/hotspot/src/os/solaris/vm/os_solaris.inline.hpp b/hotspot/src/os/solaris/vm/os_solaris.inline.hpp
+index 8e095ab69..ce37e9a12 100644
+--- a/hotspot/src/os/solaris/vm/os_solaris.inline.hpp
++++ b/hotspot/src/os/solaris/vm/os_solaris.inline.hpp
+@@ -33,7 +33,7 @@
+ #include <sys/param.h>
+ #include <dlfcn.h>
+ #include <sys/socket.h>
+-#include <sys/poll.h>
++#include <poll.h>
+ #include <sys/filio.h>
+ #include <unistd.h>
+ #include <netdb.h>
+-- 
+2.26.2
+

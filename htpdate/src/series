@@ -1,0 +1,2 @@
+0001-Make-environment-variables-assignments-to-be-weak.patch -p1
+0001-Replace-ntp_adjtime-with-adjtimex.patch -p1

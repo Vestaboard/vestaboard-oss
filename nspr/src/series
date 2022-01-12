@@ -1,0 +1,6 @@
+remove-rpath-from-tests.patch -p1
+fix-build-on-x86_64.patch -p1
+remove-srcdir-from-configure-in.patch -p1
+0002-Add-nios2-support.patch -p1
+0001-md-Fix-build-with-musl.patch -p1
+Makefile.in-remove-_BUILD_STRING-and-_BUILD_TIME.patch -p1

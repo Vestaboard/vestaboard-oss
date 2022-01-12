@@ -1,0 +1,77 @@
+From 21c555306afcc4cab2819adc550f1546f3390d15 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Andr=C3=A9=20Draszik?= <andre.draszik@jci.com>
+Date: Tue, 27 Feb 2018 13:36:53 +0000
+Subject: [PATCH 01/13] Allow using a system-installed libjpeg
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Patch stolen (and some typos corrected) from debian patch,
+which itself was a backport from:
+  http://hg.openjdk.java.net/jdk9/client/rev/bfd9a3e1aeb5
+  http://hg.openjdk.java.net/jdk9/client/jdk/rev/320743f0b4fc
+
+Issues fixed on top of debian patch:
+  * imageIOJPEG.c -> imageioJPEG.c
+  * $(LIBJPEG_LIBS) must be added to LDFLAGS_SUFFIX, not
+    LDFLAGS as it otherwise doesn't make it into the linker
+    command line and then fails when using -Wl,-z,now in
+    LDFLAGS (as done when 'security' is enabled)
+
+Upstream-Status: Backport
+
+Signed-off-by: André Draszik <andre.draszik@jci.com>
+Signed-off-by: Richard Leitner <richard.leitner@skidata.com>
+---
+ common/autoconf/libraries.m4 | 35 ++++++++++++++++++++++++++++++-----
+ 1 file changed, 30 insertions(+), 5 deletions(-)
+
+diff --git a/common/autoconf/libraries.m4 b/common/autoconf/libraries.m4
+index 6d803f9..d2732eb 100644
+--- a/common/autoconf/libraries.m4
++++ b/common/autoconf/libraries.m4
+@@ -774,11 +774,36 @@ AC_DEFUN_ONCE([LIB_SETUP_MISC_LIBS],
+   # Check for the jpeg library
+   #
+ 
+-  USE_EXTERNAL_LIBJPEG=true
+-  AC_CHECK_LIB(jpeg, main, [],
+-      [ USE_EXTERNAL_LIBJPEG=false
+-      AC_MSG_NOTICE([Will use jpeg decoder bundled with the OpenJDK source])
+-  ])
++  AC_ARG_WITH(libjpeg, [AS_HELP_STRING([--with-libjpeg],
++      [use libjpeg from build system or OpenJDK source (system, bundled) @<:@bundled@:>@])])
++
++  AC_MSG_CHECKING([for which libjpeg to use])
++
++  # default is bundled
++  DEFAULT_LIBJPEG=bundled
++
++  #
++  # if user didn't specify, use DEFAULT_LIBJPEG
++  #
++  if test "x${with_libjpeg}" = "x"; then
++    with_libjpeg=${DEFAULT_LIBJPEG}
++  fi
++
++  AC_MSG_RESULT(${with_libjpeg})
++
++  if test "x${with_libjpeg}" = "xbundled"; then
++    USE_EXTERNAL_LIBJPEG=false
++  elif test "x${with_libjpeg}" = "xsystem"; then
++    AC_CHECK_HEADER(jpeglib.h, [],
++        [ AC_MSG_ERROR([--with-libjpeg=system specified, but jpeglib.h not found!])])
++    AC_CHECK_LIB(jpeg, jpeg_CreateDecompress, [],
++        [ AC_MSG_ERROR([--with-libjpeg=system specified, but no libjpeg found])])
++
++    USE_EXTERNAL_LIBJPEG=true
++  else
++    AC_MSG_ERROR([Invalid use of --with-libjpeg: ${with_libjpeg}, use 'system' or 'bundled'])
++  fi
++
+   AC_SUBST(USE_EXTERNAL_LIBJPEG)
+ 
+   ###############################################################################
+-- 
+2.26.2
+

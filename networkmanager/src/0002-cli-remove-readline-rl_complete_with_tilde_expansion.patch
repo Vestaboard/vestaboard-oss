@@ -1,0 +1,46 @@
+From f6fe1706e2e5f73613c0b085672f22e377da701d Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?J=C3=A9r=C3=B4me=20Oufella?=
+ <jerome.oufella@savoirfairelinux.com>
+Date: Tue, 4 Jan 2022 18:27:21 -0500
+Subject: [PATCH 2/3] cli: remove readline rl_complete_with_tilde_expansion
+
+This feature is not available in libedit.
+---
+ clients/cli/connections.c | 7 -------
+ 1 file changed, 7 deletions(-)
+
+diff --git a/clients/cli/connections.c b/clients/cli/connections.c
+index e43d3fb5e7..f4b02fb374 100644
+--- a/clients/cli/connections.c
++++ b/clients/cli/connections.c
+@@ -6101,9 +6101,6 @@ gen_property_values (const char *text, int state)
+ 	return nmc_rl_gen_func_basic (text, state, avals);
+ }
+ 
+-/* from readline */
+-extern int rl_complete_with_tilde_expansion;
+-
+ /*
+  * Attempt to complete on the contents of TEXT.  START and END show the
+  * region of TEXT that contains the word to complete.  We can use the
+@@ -6130,9 +6127,6 @@ nmcli_editor_tab_completion (const char *text, int start, int end)
+ 	/* Disable default filename completion */
+ 	rl_attempted_completion_over = 1;
+ 
+-	/* Enable tilde expansion when filenames are completed */
+-	rl_complete_with_tilde_expansion = 1;
+-
+ 	/* Filter out possible ANSI color escape sequences */
+ 	prompt_tmp = nmc_filter_out_colors ((const char *) rl_prompt);
+ 
+@@ -9234,7 +9228,6 @@ nmcli_con_tab_completion (const char *text, int start, int end)
+ 		generator_func = _meta_abstract_generator;
+ 	} else if (g_strcmp0 (rl_prompt, PROMPT_IMPORT_FILE) == 0) {
+ 		rl_attempted_completion_over = 0;
+-		rl_complete_with_tilde_expansion = 1;
+ 	} else if (g_strcmp0 (rl_prompt, PROMPT_VPN_CONNECTION) == 0) {
+ 		generator_func = gen_vpn_ids;
+ 	}
+-- 
+2.25.4
+

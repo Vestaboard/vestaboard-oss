@@ -1,0 +1,56 @@
+From 61db4da387676690c0f731ef2eccc014d85c23a6 Mon Sep 17 00:00:00 2001
+From: Nicola Lunghi <nicola.lunghi@jci.com>
+Date: Wed, 20 Nov 2019 18:30:10 +0000
+Subject: [PATCH] included libc: use mempcpy instead of __mempcpy
+
+Fix to use mempcpy instead of __mempcpy. This is needed for uclibc and musl
+which doesn't define __mempcpy, only mempcpy. Since they all have
+mempcpy, we'll just use that instead.
+
+Signed-off-by: Nicola Lunghi <nick83ola@gmail.com>
+
+Patch source: OpenEmbedded (grep)
+Upstream-Status: Inappropriate [licensing]
+---
+ lib/getopt.c | 4 ++--
+ lib/regex.c  | 2 +-
+ 2 files changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/lib/getopt.c b/lib/getopt.c
+index ed32692..6626f5e 100644
+--- a/lib/getopt.c
++++ b/lib/getopt.c
+@@ -334,7 +334,7 @@ exchange (argv)
+ 	nonoption_flags_len = nonoption_flags_max_len = 0;
+       else
+ 	{
+-	  memset (__mempcpy (new_str, __getopt_nonoption_flags,
++	  memset (mempcpy (new_str, __getopt_nonoption_flags,
+ 			     nonoption_flags_max_len),
+ 		  '\0', top + 1 - nonoption_flags_max_len);
+ 	  nonoption_flags_max_len = top + 1;
+@@ -445,7 +445,7 @@ _getopt_initialize (argc, argv, optstring)
+ 	      if (__getopt_nonoption_flags == NULL)
+ 		nonoption_flags_max_len = -1;
+ 	      else
+-		memset (__mempcpy (__getopt_nonoption_flags, orig_str, len),
++		memset (mempcpy (__getopt_nonoption_flags, orig_str, len),
+ 			'\0', nonoption_flags_max_len - len);
+ 	    }
+ 	}
+diff --git a/lib/regex.c b/lib/regex.c
+index 6daec76..797b20a 100644
+--- a/lib/regex.c
++++ b/lib/regex.c
+@@ -8314,7 +8314,7 @@ regerror (errcode, preg, errbuf, errbuf_size)
+       if (msg_size > errbuf_size)
+         {
+ #if defined HAVE_MEMPCPY || defined _LIBC
+-	  *((char *) __mempcpy (errbuf, msg, errbuf_size - 1)) = '\0';
++	  *((char *) mempcpy (errbuf, msg, errbuf_size - 1)) = '\0';
+ #else
+           memcpy (errbuf, msg, errbuf_size - 1);
+           errbuf[errbuf_size - 1] = 0;
+-- 
+2.20.1
+

@@ -1,0 +1,15 @@
+0001-nss-fix-support-cross-compiling.patch -p1
+nss-no-rpath-for-cross-compiling.patch -p1
+nss-fix-incorrect-shebang-of-perl.patch -p1
+disable-Wvarargs-with-clang.patch -p1
+pqg.c-ULL_addend.patch -p1
+nss-fix-nsinstall-build.patch -p1
+0001-freebl-add-a-configure-option-to-disable-ARM-HW-cryp.patch -p1
+riscv.patch -p1
+0001-Enable-uint128-on-mips64.patch -p1
+0001-Bug-1631576-Force-a-fixed-length-for-DSA-exponentiat.patch -p1
+CVE-2020-12401.patch -p1
+CVE-2020-6829_12400.patch -p1
+CVE-2020-12403_1.patch -p1
+CVE-2020-12403_2.patch -p1
+CVE-2021-43527.patch -p1

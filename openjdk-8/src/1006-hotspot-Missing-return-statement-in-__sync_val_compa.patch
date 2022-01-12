@@ -1,0 +1,55 @@
+From 5e21de887d87243b6be03781afb4015c4673851c Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Andr=C3=A9=20Draszik?= <andre.draszik@jci.com>
+Date: Mon, 13 Aug 2018 16:46:33 +0100
+Subject: [PATCH 1006/1013] hotspot: Missing return statement in
+ __sync_val_compare_and_swap_8
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+|# HG changeset patch
+|# User andrew
+|# Date 1518667645 0
+|#      Thu Feb 15 04:07:25 2018 +0000
+|# Node ID 1d35411eb7bdf16191e220ffe3b1dc4d5d0c6041
+|# Parent  999983606f5c61b093c6f6316a7b26c4cd4ca79e
+8197981, PR3548: Missing return statement in __sync_val_compare_and_swap_8
+Summary: Fix issue discovered by -Wreturn-type on systems without LP64.
+Reviewed-by: aph
+
+Upstream-Status: Backport
+
+Signed-off-by: André Draszik <andre.draszik@jci.com>
+Signed-off-by: Richard Leitner <richard.leitner@skidata.com>
+---
+ src/os_cpu/bsd_zero/vm/os_bsd_zero.cpp     | 1 +
+ src/os_cpu/linux_zero/vm/os_linux_zero.cpp | 1 +
+ 2 files changed, 2 insertions(+)
+
+diff --git a/hotspot/src/os_cpu/bsd_zero/vm/os_bsd_zero.cpp b/hotspot/src/os_cpu/bsd_zero/vm/os_bsd_zero.cpp
+index c857b5526..4aaf78b1d 100644
+--- a/hotspot/src/os_cpu/bsd_zero/vm/os_bsd_zero.cpp
++++ b/hotspot/src/os_cpu/bsd_zero/vm/os_bsd_zero.cpp
+@@ -457,6 +457,7 @@ extern "C" {
+     long long unsigned int oldval,
+     long long unsigned int newval) {
+     ShouldNotCallThis();
++    return 0;
+   }
+ };
+ #endif // !_LP64
+diff --git a/hotspot/src/os_cpu/linux_zero/vm/os_linux_zero.cpp b/hotspot/src/os_cpu/linux_zero/vm/os_linux_zero.cpp
+index cbee43baa..136d4d3de 100644
+--- a/hotspot/src/os_cpu/linux_zero/vm/os_linux_zero.cpp
++++ b/hotspot/src/os_cpu/linux_zero/vm/os_linux_zero.cpp
+@@ -498,6 +498,7 @@ extern "C" {
+     long long unsigned int oldval,
+     long long unsigned int newval) {
+     ShouldNotCallThis();
++    return 0;
+   }
+ };
+ #endif // !_LP64
+-- 
+2.26.2
+

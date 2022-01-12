@@ -1,0 +1,33 @@
+From 12dbeed90199730ad56ad842ae53e9d8aa477c0c Mon Sep 17 00:00:00 2001
+From: Jens Rehsack <rehsack@gmail.com>
+Date: Thu, 2 Jan 2020 13:42:43 +0100
+Subject: [PATCH 04/13] don't expect fqpn for make
+
+Signed-off-by: Richard Leitner <richard.leitner@skidata.com>
+---
+ common/autoconf/basics.m4 | 8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
+
+diff --git a/common/autoconf/basics.m4 b/common/autoconf/basics.m4
+index 4ee9cdd..c20ea76 100644
+--- a/common/autoconf/basics.m4
++++ b/common/autoconf/basics.m4
+@@ -740,10 +740,12 @@ AC_DEFUN([BASIC_CHECK_GNU_MAKE],
+   # We need to find a recent version of GNU make. Especially on Solaris, this can be tricky.
+   if test "x$MAKE" != x; then
+     # User has supplied a make, test it.
+-    if test ! -f "$MAKE"; then
+-      AC_MSG_ERROR([The specified make (by MAKE=$MAKE) is not found.])
++    if test `dirname "$MAKE"` = "." && ! test -f "$MAKE"; then
++      AC_PATH_PROGS(CHECK_MAKE, $MAKE)
++    else
++      CHECK_MAKE="${MAKE}"
+     fi
+-    BASIC_CHECK_MAKE_VERSION("$MAKE", [user supplied MAKE=$MAKE])
++    BASIC_CHECK_MAKE_VERSION("$CHECK_MAKE", [user supplied MAKE=$MAKE])
+     if test "x$FOUND_MAKE" = x; then
+       AC_MSG_ERROR([The specified make (by MAKE=$MAKE) is not GNU make 3.81 or newer.])
+     fi
+-- 
+2.26.2
+

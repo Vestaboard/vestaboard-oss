@@ -1,0 +1,60 @@
+From 98bc29e8a07b5889377a41a30ce151fffea2e4fd Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?J=C3=A9r=C3=B4me=20Oufella?=
+ <jerome.oufella@savoirfairelinux.com>
+Date: Thu, 9 Sep 2021 12:01:42 -0400
+Subject: [PATCH 2/2] brcmfmac: make sdio drive strength configurable via
+ parameter
+
+Loading the driver with sdio_ds=X allows overriding the default 6mA
+drive strength setting (see brcm,drive-strength documentation).
+
+Signed-off-by: Jerome Oufella <jerome.oufella@savoirfairelinux.com>
+---
+ .../net/wireless/broadcom/brcm80211/brcmfmac/common.c  | 10 +++++++++-
+ .../net/wireless/broadcom/brcm80211/brcmfmac/sdio.c    |  1 +
+ 2 files changed, 10 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c
+index dec25e415619..15d2ca596046 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/common.c
+@@ -33,6 +33,11 @@ MODULE_LICENSE("Dual BSD/GPL");
+ 
+ #define BRCMF_DEFAULT_TXGLOM_SIZE	32  /* max tx frames in glom chain */
+ 
++
++static int brcmf_sdio_ds;
++module_param_named(sdio_ds, brcmf_sdio_ds, int, 0);
++MODULE_PARM_DESC(sdio_ds, "Configure SDIO bus drive strength");
++
+ static int brcmf_sdiod_txglomsz = BRCMF_DEFAULT_TXGLOM_SIZE;
+ module_param_named(txglomsz, brcmf_sdiod_txglomsz, int, 0);
+ MODULE_PARM_DESC(txglomsz, "Maximum tx packet chain size [SDIO]");
+@@ -417,8 +422,11 @@ struct brcmf_mp_device *brcmf_get_module_param(struct device *dev,
+ 	settings->ignore_probe_fail = !!brcmf_ignore_probe_fail;
+ #endif
+ 
+-	if (bus_type == BRCMF_BUSTYPE_SDIO)
++	if (bus_type == BRCMF_BUSTYPE_SDIO) {
+ 		settings->bus.sdio.txglomsz = brcmf_sdiod_txglomsz;
++		if (brcmf_sdio_ds > 0 && brcmf_sdio_ds <= 16)
++			settings->bus.sdio.drive_strength = brcmf_sdio_ds;
++	}
+ 
+ 	/* See if there is any device specific platform data configured */
+ 	found = false;
+diff --git a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c
+index ee540d5fd96b..13999e913937 100644
+--- a/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c
++++ b/drivers/net/wireless/broadcom/brcm80211/brcmfmac/sdio.c
+@@ -3991,6 +3991,7 @@ brcmf_sdio_probe_attach(struct brcmf_sdio *bus)
+ 		drivestrength = sdiodev->settings->bus.sdio.drive_strength;
+ 	else
+ 		drivestrength = DEFAULT_SDIO_DRIVE_STRENGTH;
++
+ 	brcmf_sdio_drivestrengthinit(sdiodev, bus->ci, drivestrength);
+ 
+ 	/* Set card control so an SDIO card reset does a WLAN backplane reset */
+-- 
+2.25.4
+

@@ -1,0 +1,8 @@
+disable-git-version-gen.patch -p1
+update-gawk-paths.patch -p1
+Makefile-ptest.patch -p1
+mips-SIGEMT.patch -p1
+0001-caps-abbrev.awk-fix-gawk-s-path.patch -p1
+ptest-spacesave.patch -p1
+uintptr_t.patch -p1
+0001-strace-fix-reproducibilty-issues.patch -p1

@@ -1,0 +1,235 @@
+From 024e0d522f205ca8659fce60ca4be68b9e3e08db Mon Sep 17 00:00:00 2001
+From: Richard Leitner <richard.leitner@skidata.com>
+Date: Thu, 22 Oct 2020 09:41:07 +0200
+Subject: [PATCH 1007/1013] hotspot: Turn on the -Wreturn-type warning
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+|# HG changeset patch
+|# User stefank
+|# Date 1525453613 -3600
+|#      Fri May 04 18:06:53 2018 +0100
+|# Node ID 07a1135a327362f157955d470fad5df07cc35164
+|# Parent  de79964656fc652f2085dac4fe99bcc128b5a3b1
+8062808, PR3548: Turn on the -Wreturn-type warning
+Reviewed-by: mgerdin, tschatzl, coleenp, jrose, kbarrett
+
+Upstream-Status: Backport
+
+Signed-off-by: André Draszik <andre.draszik@jci.com>
+Signed-off-by: Richard Leitner <richard.leitner@skidata.com>
+---
+ make/linux/makefiles/gcc.make               | 2 +-
+ src/cpu/x86/vm/x86_32.ad                    | 1 +
+ src/os_cpu/linux_x86/vm/os_linux_x86.cpp    | 1 +
+ src/share/vm/classfile/defaultMethods.cpp   | 4 ++--
+ src/share/vm/classfile/symbolTable.cpp      | 4 ++--
+ src/share/vm/classfile/systemDictionary.cpp | 6 +++---
+ src/share/vm/memory/heapInspection.hpp      | 2 +-
+ src/share/vm/memory/metaspaceShared.hpp     | 2 +-
+ src/share/vm/oops/constantPool.hpp          | 2 +-
+ src/share/vm/prims/jvm.cpp                  | 2 +-
+ src/share/vm/runtime/reflection.cpp         | 2 +-
+ src/share/vm/runtime/sharedRuntime.cpp      | 2 +-
+ src/share/vm/services/memTracker.hpp        | 2 +-
+ 13 files changed, 17 insertions(+), 15 deletions(-)
+
+diff --git a/hotspot/make/linux/makefiles/gcc.make b/hotspot/make/linux/makefiles/gcc.make
+index 36b3c8ba9..cd9511e50 100644
+--- a/hotspot/make/linux/makefiles/gcc.make
++++ b/hotspot/make/linux/makefiles/gcc.make
+@@ -211,7 +211,7 @@ ifeq ($(USE_CLANG), true)
+   WARNINGS_ARE_ERRORS += -Wno-return-type -Wno-empty-body
+ endif
+ 
+-WARNING_FLAGS = -Wpointer-arith -Wsign-compare -Wundef -Wunused-function -Wunused-value
++WARNING_FLAGS = -Wpointer-arith -Wsign-compare -Wundef -Wunused-function -Wunused-value -Wreturn-type
+ 
+ ifeq ($(USE_CLANG),)
+   # Since GCC 4.3, -Wconversion has changed its meanings to warn these implicit
+diff --git a/hotspot/src/cpu/x86/vm/x86_32.ad b/hotspot/src/cpu/x86/vm/x86_32.ad
+index f42d1a288..c8f4ee161 100644
+--- a/hotspot/src/cpu/x86/vm/x86_32.ad
++++ b/hotspot/src/cpu/x86/vm/x86_32.ad
+@@ -1250,6 +1250,7 @@ uint MachSpillCopyNode::implementation( CodeBuffer *cbuf, PhaseRegAlloc *ra_, bo
+ 
+ 
+   Unimplemented();
++  return 0; // Mute compiler
+ }
+ 
+ #ifndef PRODUCT
+diff --git a/hotspot/src/os_cpu/linux_x86/vm/os_linux_x86.cpp b/hotspot/src/os_cpu/linux_x86/vm/os_linux_x86.cpp
+index c35d8677f..65c3165ca 100644
+--- a/hotspot/src/os_cpu/linux_x86/vm/os_linux_x86.cpp
++++ b/hotspot/src/os_cpu/linux_x86/vm/os_linux_x86.cpp
+@@ -541,6 +541,7 @@ JVM_handle_linux_signal(int sig,
+   err.report_and_die();
+ 
+   ShouldNotReachHere();
++  return true; // Mute compiler
+ }
+ 
+ void os::Linux::init_thread_fpu_state(void) {
+diff --git a/hotspot/src/share/vm/classfile/defaultMethods.cpp b/hotspot/src/share/vm/classfile/defaultMethods.cpp
+index 4b4b4e250..196622aed 100644
+--- a/hotspot/src/share/vm/classfile/defaultMethods.cpp
++++ b/hotspot/src/share/vm/classfile/defaultMethods.cpp
+@@ -506,7 +506,7 @@ Symbol* MethodFamily::generate_method_message(Symbol *klass_name, Method* method
+   ss.write((const char*)name->bytes(), name->utf8_length());
+   ss.write((const char*)signature->bytes(), signature->utf8_length());
+   ss.print(" is abstract");
+-  return SymbolTable::new_symbol(ss.base(), (int)ss.size(), CHECK_NULL);
++  return SymbolTable::new_symbol(ss.base(), (int)ss.size(), THREAD);
+ }
+ 
+ Symbol* MethodFamily::generate_conflicts_message(GrowableArray<Method*>* methods, TRAPS) const {
+@@ -521,7 +521,7 @@ Symbol* MethodFamily::generate_conflicts_message(GrowableArray<Method*>* methods
+     ss.print(".");
+     ss.write((const char*)name->bytes(), name->utf8_length());
+   }
+-  return SymbolTable::new_symbol(ss.base(), (int)ss.size(), CHECK_NULL);
++  return SymbolTable::new_symbol(ss.base(), (int)ss.size(), THREAD);
+ }
+ 
+ 
+diff --git a/hotspot/src/share/vm/classfile/symbolTable.cpp b/hotspot/src/share/vm/classfile/symbolTable.cpp
+index 83369cbcf..8dd4e6b21 100644
+--- a/hotspot/src/share/vm/classfile/symbolTable.cpp
++++ b/hotspot/src/share/vm/classfile/symbolTable.cpp
+@@ -249,7 +249,7 @@ Symbol* SymbolTable::lookup(const char* name, int len, TRAPS) {
+   MutexLocker ml(SymbolTable_lock, THREAD);
+ 
+   // Otherwise, add to symbol to table
+-  return the_table()->basic_add(index, (u1*)name, len, hashValue, true, CHECK_NULL);
++  return the_table()->basic_add(index, (u1*)name, len, hashValue, true, THREAD);
+ }
+ 
+ Symbol* SymbolTable::lookup(const Symbol* sym, int begin, int end, TRAPS) {
+@@ -288,7 +288,7 @@ Symbol* SymbolTable::lookup(const Symbol* sym, int begin, int end, TRAPS) {
+   // Grab SymbolTable_lock first.
+   MutexLocker ml(SymbolTable_lock, THREAD);
+ 
+-  return the_table()->basic_add(index, (u1*)buffer, len, hashValue, true, CHECK_NULL);
++  return the_table()->basic_add(index, (u1*)buffer, len, hashValue, true, THREAD);
+ }
+ 
+ Symbol* SymbolTable::lookup_only(const char* name, int len,
+diff --git a/hotspot/src/share/vm/classfile/systemDictionary.cpp b/hotspot/src/share/vm/classfile/systemDictionary.cpp
+index 4541e815a..98412e1e1 100644
+--- a/hotspot/src/share/vm/classfile/systemDictionary.cpp
++++ b/hotspot/src/share/vm/classfile/systemDictionary.cpp
+@@ -236,15 +236,15 @@ Klass* SystemDictionary::resolve_or_null(Symbol* class_name, Handle class_loader
+                  class_name->as_C_string(),
+                  class_loader.is_null() ? "null" : class_loader->klass()->name()->as_C_string()));
+   if (FieldType::is_array(class_name)) {
+-    return resolve_array_class_or_null(class_name, class_loader, protection_domain, CHECK_NULL);
++    return resolve_array_class_or_null(class_name, class_loader, protection_domain, THREAD);
+   } else if (FieldType::is_obj(class_name)) {
+     ResourceMark rm(THREAD);
+     // Ignore wrapping L and ;.
+     TempNewSymbol name = SymbolTable::new_symbol(class_name->as_C_string() + 1,
+                                    class_name->utf8_length() - 2, CHECK_NULL);
+-    return resolve_instance_class_or_null(name, class_loader, protection_domain, CHECK_NULL);
++    return resolve_instance_class_or_null(name, class_loader, protection_domain, THREAD);
+   } else {
+-    return resolve_instance_class_or_null(class_name, class_loader, protection_domain, CHECK_NULL);
++    return resolve_instance_class_or_null(class_name, class_loader, protection_domain, THREAD);
+   }
+ }
+ 
+diff --git a/hotspot/src/share/vm/memory/heapInspection.hpp b/hotspot/src/share/vm/memory/heapInspection.hpp
+index 09ee6602e..c5fec15c3 100644
+--- a/hotspot/src/share/vm/memory/heapInspection.hpp
++++ b/hotspot/src/share/vm/memory/heapInspection.hpp
+@@ -367,7 +367,7 @@ class HeapInspection : public StackObj {
+       _csv_format(csv_format), _print_help(print_help),
+       _print_class_stats(print_class_stats), _columns(columns) {}
+   void heap_inspection(outputStream* st) NOT_SERVICES_RETURN;
+-  size_t populate_table(KlassInfoTable* cit, BoolObjectClosure* filter = NULL) NOT_SERVICES_RETURN;
++  size_t populate_table(KlassInfoTable* cit, BoolObjectClosure* filter = NULL) NOT_SERVICES_RETURN_(0);
+   static void find_instances_at_safepoint(Klass* k, GrowableArray<oop>* result) NOT_SERVICES_RETURN;
+  private:
+   void iterate_over_heap(KlassInfoTable* cit, BoolObjectClosure* filter = NULL);
+diff --git a/hotspot/src/share/vm/memory/metaspaceShared.hpp b/hotspot/src/share/vm/memory/metaspaceShared.hpp
+index 2f3abae6a..d58ebecb2 100644
+--- a/hotspot/src/share/vm/memory/metaspaceShared.hpp
++++ b/hotspot/src/share/vm/memory/metaspaceShared.hpp
+@@ -93,7 +93,7 @@ class MetaspaceShared : AllStatic {
+   static void preload_and_dump(TRAPS) NOT_CDS_RETURN;
+   static int preload_and_dump(const char * class_list_path,
+                               GrowableArray<Klass*>* class_promote_order,
+-                              TRAPS) NOT_CDS_RETURN;
++                              TRAPS) NOT_CDS_RETURN_(0);
+ 
+   static ReservedSpace* shared_rs() {
+     CDS_ONLY(return _shared_rs);
+diff --git a/hotspot/src/share/vm/oops/constantPool.hpp b/hotspot/src/share/vm/oops/constantPool.hpp
+index 68435471d..fad4a92cb 100644
+--- a/hotspot/src/share/vm/oops/constantPool.hpp
++++ b/hotspot/src/share/vm/oops/constantPool.hpp
+@@ -350,7 +350,7 @@ class ConstantPool : public Metadata {
+ 
+   Klass* klass_at(int which, TRAPS) {
+     constantPoolHandle h_this(THREAD, this);
+-    return klass_at_impl(h_this, which, CHECK_NULL);
++    return klass_at_impl(h_this, which, THREAD);
+   }
+ 
+   Symbol* klass_name_at(int which) const;  // Returns the name, w/o resolving.
+diff --git a/hotspot/src/share/vm/prims/jvm.cpp b/hotspot/src/share/vm/prims/jvm.cpp
+index 6f2221c41..daa69f89a 100644
+--- a/hotspot/src/share/vm/prims/jvm.cpp
++++ b/hotspot/src/share/vm/prims/jvm.cpp
+@@ -4368,7 +4368,7 @@ JVM_ENTRY(jlong,JVM_DTraceActivate(
+     JVM_DTraceProvider* providers))
+   JVMWrapper("JVM_DTraceActivate");
+   return DTraceJSDT::activate(
+-    version, module_name, providers_count, providers, CHECK_0);
++    version, module_name, providers_count, providers, THREAD);
+ JVM_END
+ 
+ JVM_ENTRY(jboolean,JVM_DTraceIsProbeEnabled(JNIEnv* env, jmethodID method))
+diff --git a/hotspot/src/share/vm/runtime/reflection.cpp b/hotspot/src/share/vm/runtime/reflection.cpp
+index 4b39d8ccb..9cd7b0dcb 100644
+--- a/hotspot/src/share/vm/runtime/reflection.cpp
++++ b/hotspot/src/share/vm/runtime/reflection.cpp
+@@ -1093,7 +1093,7 @@ oop Reflection::invoke(instanceKlassHandle klass, methodHandle reflected_method,
+   } else {
+     if (rtype == T_BOOLEAN || rtype == T_BYTE || rtype == T_CHAR || rtype == T_SHORT)
+       narrow((jvalue*) result.get_value_addr(), rtype, CHECK_NULL);
+-    return box((jvalue*) result.get_value_addr(), rtype, CHECK_NULL);
++    return box((jvalue*) result.get_value_addr(), rtype, THREAD);
+   }
+ }
+ 
+diff --git a/hotspot/src/share/vm/runtime/sharedRuntime.cpp b/hotspot/src/share/vm/runtime/sharedRuntime.cpp
+index d5bea29c3..50578ad63 100644
+--- a/hotspot/src/share/vm/runtime/sharedRuntime.cpp
++++ b/hotspot/src/share/vm/runtime/sharedRuntime.cpp
+@@ -1041,7 +1041,7 @@ Handle SharedRuntime::find_callee_info(JavaThread* thread, Bytecodes::Code& bc,
+   // last java frame on stack (which includes native call frames)
+   vframeStream vfst(thread, true);  // Do not skip and javaCalls
+ 
+-  return find_callee_info_helper(thread, vfst, bc, callinfo, CHECK_(Handle()));
++  return find_callee_info_helper(thread, vfst, bc, callinfo, THREAD);
+ }
+ 
+ 
+diff --git a/hotspot/src/share/vm/services/memTracker.hpp b/hotspot/src/share/vm/services/memTracker.hpp
+index 8ea859ddb..535147f8c 100644
+--- a/hotspot/src/share/vm/services/memTracker.hpp
++++ b/hotspot/src/share/vm/services/memTracker.hpp
+@@ -64,7 +64,7 @@ class MemTracker : AllStatic {
+     const NativeCallStack& stack, MEMFLAGS flag = mtNone) { }
+   static inline void record_virtual_memory_commit(void* addr, size_t size, const NativeCallStack& stack) { }
+   static inline Tracker get_virtual_memory_uncommit_tracker() { return Tracker(); }
+-  static inline Tracker get_virtual_memory_release_tracker() { }
++  static inline Tracker get_virtual_memory_release_tracker() { return Tracker(); }
+   static inline void record_virtual_memory_type(void* addr, MEMFLAGS flag) { }
+   static inline void record_thread_stack(void* addr, size_t size) { }
+   static inline void release_thread_stack(void* addr, size_t size) { }
+-- 
+2.26.2
+

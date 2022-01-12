@@ -1,0 +1,216 @@
+From 1d7ea474a12a12e0e28e1a24f686a7478fe42b8d Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Andr=C3=A9=20Draszik?= <andre.draszik@jci.com>
+Date: Tue, 27 Feb 2018 13:36:53 +0000
+Subject: [PATCH 2002/2009] jdk: Allow using a system-installed libjpeg
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Patch stolen (and some typos corrected) from debian patch,
+which itself was a backport from:
+  http://hg.openjdk.java.net/jdk9/client/rev/bfd9a3e1aeb5
+  http://hg.openjdk.java.net/jdk9/client/jdk/rev/320743f0b4fc
+
+Issues fixed on top of debian patch:
+  * imageIOJPEG.c -> imageioJPEG.c
+  * $(LIBJPEG_LIBS) must be added to LDFLAGS_SUFFIX, not
+    LDFLAGS as it otherwise doesn't make it into the linker
+    command line and then fails when using -Wl,-z,now in
+    LDFLAGS (as done when 'security' is enabled)
+
+Upstream-Status: Backport
+Signed-off-by: André Draszik <andre.draszik@jci.com>
+Signed-off-by: Richard Leitner <richard.leitner@skidata.com>
+---
+ make/lib/Awt2dLibraries.gmk                   | 69 +++++++++++++------
+ .../imageio/plugins/jpeg/JPEGImageReader.java |  2 +-
+ .../imageio/plugins/jpeg/JPEGImageWriter.java |  2 +-
+ .../sun/awt/image/JPEGImageDecoder.java       |  2 +-
+ .../native/sun/awt/image/jpeg/imageioJPEG.c   |  2 +-
+ 5 files changed, 51 insertions(+), 26 deletions(-)
+
+diff --git a/jdk/make/lib/Awt2dLibraries.gmk b/jdk/make/lib/Awt2dLibraries.gmk
+index 9368a9d508..7fffcafc70 100644
+--- a/jdk/make/lib/Awt2dLibraries.gmk
++++ b/jdk/make/lib/Awt2dLibraries.gmk
+@@ -702,21 +702,24 @@ $(BUILD_LIBLCMS): $(BUILD_LIBAWT)
+ 
+ ##########################################################################################
+ 
++BUILD_LIBJAVAJPEG_DIR := $(JDK_TOPDIR)/src/share/native/sun/awt/image/jpeg
++
+ ifdef OPENJDK
+-  BUILD_LIBJPEG_MAPFILE := $(JDK_TOPDIR)/make/mapfiles/libjpeg/mapfile-vers
++  BUILD_LIBJAVAJPEG_MAPFILE := $(JDK_TOPDIR)/make/mapfiles/libjpeg/mapfile-vers
+ else
+-  BUILD_LIBJPEG_MAPFILE := $(JDK_TOPDIR)/make/mapfiles/libjpeg/mapfile-vers-closed
+-  BUILD_LIBJPEG_CLOSED_SRC := $(JDK_TOPDIR)/src/closed/share/native/sun/awt/image/jpeg
+-  BUILD_LIBJPEG_CLOSED_INCLUDES := -I$(BUILD_LIBJPEG_CLOSED_SRC)
++  BUILD_LIBJAVAJPEG_MAPFILE := $(JDK_TOPDIR)/make/mapfiles/libjpeg/mapfile-vers-closed
++  BUILD_LIBJAVAJPEG_CLOSED_SRC := $(JDK_TOPDIR)/src/closed/share/native/sun/awt/image/jpeg
++  BUILD_LIBJAVAJPEG_CLOSED_INCLUDES := -I$(BUILD_LIBJAVAJPEG_CLOSED_SRC)
+ endif
+ 
+-BUILD_LIBJPEG_REORDER :=
++BUILD_LIBJAVAJPEG_REORDER :=
+ ifeq ($(OPENJDK_TARGET_OS), solaris)
+   ifneq ($(OPENJDK_TARGET_CPU), x86_64)
+-    BUILD_LIBJPEG_REORDER := $(JDK_TOPDIR)/make/mapfiles/libjpeg/reorder-$(OPENJDK_TARGET_CPU)
++    BUILD_LIBJAVAJPEG_REORDER := $(JDK_TOPDIR)/make/mapfiles/libjpeg/reorder-$(OPENJDK_TARGET_CPU)
+   endif
+ endif
+ 
++
+ # Suppress gcc warnings like "variable might be clobbered by 'longjmp'
+ # or 'vfork'": this warning indicates that some variable is placed to
+ # a register by optimized compiler and it's value might be lost on longjmp().
+@@ -728,37 +731,50 @@ endif
+ #      $(shell $(EXPR) $(CC_MAJORVER) \> 4 \| \
+ #          \( $(CC_MAJORVER) = 4 \& $(CC_MINORVER) \>= 3 \) )
+ #  ifeq ($(CC_43_OR_NEWER), 1)
+-#    BUILD_LIBJPEG_CFLAGS_linux += -Wno-clobbered
++#    BUILD_LIBJAVAJPEG_CFLAGS_linux += -Wno-clobbered
+ #  endif
+ #endif
+ 
+-$(eval $(call SetupNativeCompilation,BUILD_LIBJPEG, \
+-    LIBRARY := jpeg, \
++ifeq ($(USE_EXTERNAL_LIBJPEG), true)
++  LIBJPEG_LIBS := -ljpeg
++  BUILD_LIBJAVAJPEG_INCLUDE_FILES := \
++      imageioJPEG.c \
++      jpegdecoder.c
++  BUILD_LIBJAVAJPEG_HEADERS :=
++else
++  LIBJPEG_LIBS :=
++  BUILD_LIBJAVAJPEG_INCLUDE_FILES :=
++  BUILD_LIBJAVAJPEG_HEADERS := -I$(BUILD_LIBJAVAJPEG_DIR)
++endif
++
++$(eval $(call SetupNativeCompilation,BUILD_LIBJAVAJPEG, \
++    LIBRARY := javajpeg, \
+     OUTPUT_DIR := $(INSTALL_LIBRARIES_HERE), \
+-    SRC := $(BUILD_LIBJPEG_CLOSED_SRC) \
+-        $(JDK_TOPDIR)/src/share/native/sun/awt/image/jpeg, \
++    SRC := $(BUILD_LIBJAVAJPEG_CLOSED_SRC) \
++        $(BUILD_LIBJAVAJPEG_DIR), \
++    INCLUDE_FILES := $(BUILD_LIBJAVAJPEG_INCLUDE_FILES), \
+     LANG := C, \
+     OPTIMIZATION := HIGHEST, \
+     CFLAGS := $(CFLAGS_JDKLIB) \
+-        $(BUILD_LIBJPEG_CLOSED_INCLUDES) \
+-        -I$(JDK_TOPDIR)/src/share/native/sun/awt/image/jpeg, \
+-    MAPFILE := $(BUILD_LIBJPEG_MAPFILE), \
++        $(BUILD_LIBJAVAJPEG_CLOSED_INCLUDES) \
++        $(BUILD_LIBJAVAJPEG_HEADERS), \
++    MAPFILE := $(BUILD_LIBJAVAJPEG_MAPFILE), \
+     LDFLAGS := $(LDFLAGS_JDKLIB) \
+         $(call SET_SHARED_LIBRARY_ORIGIN), \
+     LDFLAGS_windows := $(WIN_JAVA_LIB) jvm.lib, \
+-    LDFLAGS_SUFFIX := $(LDFLAGS_JDKLIB_SUFFIX), \
++    LDFLAGS_SUFFIX := $(LDFLAGS_JDKLIB_SUFFIX) $(LIBJPEG_LIBS), \
+     VERSIONINFO_RESOURCE := $(JDK_TOPDIR)/src/windows/resource/version.rc, \
+     RC_FLAGS := $(RC_FLAGS) \
+-        -D "JDK_FNAME=jpeg.dll" \
+-        -D "JDK_INTERNAL_NAME=jpeg" \
++        -D "JDK_FNAME=javajpeg.dll" \
++        -D "JDK_INTERNAL_NAME=javajpeg" \
+         -D "JDK_FTYPE=0x2L", \
+-    REORDER := $(BUILD_LIBJPEG_REORDER), \
++    REORDER := $(BUILD_LIBJAVAJPEG_REORDER), \
+     OBJECT_DIR := $(JDK_OUTPUTDIR)/objs/libjpeg, \
+     DEBUG_SYMBOLS := $(DEBUG_ALL_BINARIES)))
+ 
+-$(BUILD_LIBJPEG): $(BUILD_LIBJAVA)
++$(BUILD_LIBJAVAJPEG): $(BUILD_LIBJAVA)
+ 
+-BUILD_LIBRARIES += $(BUILD_LIBJPEG)
++BUILD_LIBRARIES += $(BUILD_LIBJAVAJPEG)
+ 
+ ##########################################################################################
+ 
+@@ -1149,6 +1165,13 @@ ifndef BUILD_HEADLESS_ONLY
+     GIFLIB_CFLAGS := -I$(JDK_TOPDIR)/src/share/native/sun/awt/giflib
+   endif
+ 
++  ifeq ($(USE_EXTERNAL_LIBJPEG), true)
++    LIBJPEG_LDFLAGS := -ljpeg
++  else
++    LIBSPLASHSCREEN_DIRS += $(JDK_TOPDIR)/src/share/native/sun/awt/image/jpeg
++    LIBJPEG_CFLAGS := -I$(JDK_TOPDIR)/src/share/native/sun/awt/image/jpeg
++  endif
++
+   ifneq ($(OPENJDK_TARGET_OS), macosx)
+     LIBSPLASHSCREEN_DIRS += $(JDK_TOPDIR)/src/$(OPENJDK_TARGET_OS_API_DIR)/native/sun/awt/splashscreen
+   else
+@@ -1205,11 +1228,13 @@ ifndef BUILD_HEADLESS_ONLY
+       EXCLUDE_FILES := imageioJPEG.c jpegdecoder.c pngtest.c, \
+       LANG := C, \
+       OPTIMIZATION := LOW, \
+-      CFLAGS := $(LIBSPLASHSCREEN_CFLAGS) $(CFLAGS_JDKLIB) $(GIFLIB_CFLAGS), \
++      CFLAGS := $(LIBSPLASHSCREEN_CFLAGS) $(CFLAGS_JDKLIB) \
++                $(GIFLIB_CFLAGS) $(LIBJPEG_CFLAGS), \
+       MAPFILE := $(JDK_TOPDIR)/make/mapfiles/libsplashscreen/mapfile-vers, \
+       LDFLAGS := $(LDFLAGS_JDKLIB) \
+           $(call SET_SHARED_LIBRARY_ORIGIN), \
+-      LDFLAGS_SUFFIX := $(LIBSPLASHSCREEN_LDFLAGS_SUFFIX) $(LIBZ) $(GIFLIB_LDFLAGS), \
++      LDFLAGS_SUFFIX := $(LIBSPLASHSCREEN_LDFLAGS_SUFFIX) $(LIBZ) \
++                        $(GIFLIB_LDFLAGS) $(LIBJPEG_LDFLAGS), \
+       LDFLAGS_SUFFIX_solaris := -lc, \
+       VERSIONINFO_RESOURCE := $(JDK_TOPDIR)/src/windows/resource/version.rc, \
+       RC_FLAGS := $(RC_FLAGS) \
+diff --git a/jdk/src/share/classes/com/sun/imageio/plugins/jpeg/JPEGImageReader.java b/jdk/src/share/classes/com/sun/imageio/plugins/jpeg/JPEGImageReader.java
+index 8f58f5b3e6..fcbab82602 100644
+--- a/jdk/src/share/classes/com/sun/imageio/plugins/jpeg/JPEGImageReader.java
++++ b/jdk/src/share/classes/com/sun/imageio/plugins/jpeg/JPEGImageReader.java
+@@ -89,7 +89,7 @@ public class JPEGImageReader extends ImageReader {
+         java.security.AccessController.doPrivileged(
+             new java.security.PrivilegedAction<Void>() {
+                 public Void run() {
+-                    System.loadLibrary("jpeg");
++                    System.loadLibrary("javajpeg");
+                     return null;
+                 }
+             });
+diff --git a/jdk/src/share/classes/com/sun/imageio/plugins/jpeg/JPEGImageWriter.java b/jdk/src/share/classes/com/sun/imageio/plugins/jpeg/JPEGImageWriter.java
+index 6a33bd5a15..dca189ed85 100644
+--- a/jdk/src/share/classes/com/sun/imageio/plugins/jpeg/JPEGImageWriter.java
++++ b/jdk/src/share/classes/com/sun/imageio/plugins/jpeg/JPEGImageWriter.java
+@@ -177,7 +177,7 @@ public class JPEGImageWriter extends ImageWriter {
+         java.security.AccessController.doPrivileged(
+             new java.security.PrivilegedAction<Void>() {
+                 public Void run() {
+-                    System.loadLibrary("jpeg");
++                    System.loadLibrary("javajpeg");
+                     return null;
+                 }
+             });
+diff --git a/jdk/src/share/classes/sun/awt/image/JPEGImageDecoder.java b/jdk/src/share/classes/sun/awt/image/JPEGImageDecoder.java
+index 872ffc0197..5965a186b9 100644
+--- a/jdk/src/share/classes/sun/awt/image/JPEGImageDecoder.java
++++ b/jdk/src/share/classes/sun/awt/image/JPEGImageDecoder.java
+@@ -56,7 +56,7 @@ public class JPEGImageDecoder extends ImageDecoder {
+         java.security.AccessController.doPrivileged(
+             new java.security.PrivilegedAction<Void>() {
+                 public Void run() {
+-                    System.loadLibrary("jpeg");
++                    System.loadLibrary("javajpeg");
+                     return null;
+                 }
+             });
+diff --git a/jdk/src/share/native/sun/awt/image/jpeg/imageioJPEG.c b/jdk/src/share/native/sun/awt/image/jpeg/imageioJPEG.c
+index 7e1d8c99d7..8cac61da32 100644
+--- a/jdk/src/share/native/sun/awt/image/jpeg/imageioJPEG.c
++++ b/jdk/src/share/native/sun/awt/image/jpeg/imageioJPEG.c
+@@ -51,7 +51,7 @@
+ 
+ /* headers from the JPEG library */
+ #include <jpeglib.h>
+-#include "jerror.h"
++#include <jerror.h>
+ 
+ #undef MAX
+ #define MAX(a,b)        ((a) > (b) ? (a) : (b))
+-- 
+2.26.2
+

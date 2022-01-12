@@ -1,0 +1,142 @@
+From f8a3f19fa4fabaf57b0c2c77e966d9896399b3f8 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Andr=C3=A9=20Draszik?= <andre.draszik@jci.com>
+Date: Mon, 13 Aug 2018 16:45:24 +0100
+Subject: [PATCH 1005/1013] hotspot: Zero build requires disabled warnings
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+|# HG changeset patch
+|# User sgehwolf
+|# Date 1525714161 -3600
+|#      Mon May 07 18:29:21 2018 +0100
+|# Node ID afb31413c73cbc06420fdb447aa90a7a38258904
+|# Parent  bcbc64dfb629c5f188bbf59b8f986ad95963ed60
+8143245, PR3548: Zero build requires disabled warnings
+Reviewed-by: dholmes, coleenp
+
+Upstream-Status: Backport
+
+Signed-off-by: André Draszik <andre.draszik@jci.com>
+Signed-off-by: Richard Leitner <richard.leitner@skidata.com>
+---
+ src/cpu/zero/vm/cppInterpreter_zero.cpp        |  2 +-
+ src/cpu/zero/vm/interpreterRT_zero.cpp         |  4 ++--
+ src/os_cpu/linux_zero/vm/os_linux_zero.cpp     | 14 ++++++++++++--
+ src/os_cpu/linux_zero/vm/thread_linux_zero.hpp |  3 ++-
+ 4 files changed, 17 insertions(+), 6 deletions(-)
+
+diff --git a/hotspot/src/cpu/zero/vm/cppInterpreter_zero.cpp b/hotspot/src/cpu/zero/vm/cppInterpreter_zero.cpp
+index 525031eb9..d47422b8c 100644
+--- a/hotspot/src/cpu/zero/vm/cppInterpreter_zero.cpp
++++ b/hotspot/src/cpu/zero/vm/cppInterpreter_zero.cpp
+@@ -100,7 +100,7 @@ intptr_t narrow(BasicType type, intptr_t result) {
+     case T_DOUBLE:
+     case T_VOID:
+       return result;
+-    default  : ShouldNotReachHere();
++    default  : ShouldNotReachHere(); return NULL_WORD;
+   }
+ }
+ 
+diff --git a/hotspot/src/cpu/zero/vm/interpreterRT_zero.cpp b/hotspot/src/cpu/zero/vm/interpreterRT_zero.cpp
+index e23e3eaa9..061ed8ce8 100644
+--- a/hotspot/src/cpu/zero/vm/interpreterRT_zero.cpp
++++ b/hotspot/src/cpu/zero/vm/interpreterRT_zero.cpp
+@@ -1,5 +1,5 @@
+ /*
+- * Copyright (c) 2003, 2012, Oracle and/or its affiliates. All rights reserved.
++ * Copyright (c) 2003, 2016, Oracle and/or its affiliates. All rights reserved.
+  * Copyright 2007, 2008, 2010 Red Hat, Inc.
+  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+  *
+@@ -62,7 +62,7 @@ void InterpreterRuntime::SignatureHandlerGeneratorBase::pass_object() {
+ }
+ 
+ void InterpreterRuntime::SignatureHandlerGeneratorBase::push(BasicType type) {
+-  ffi_type *ftype;
++  ffi_type *ftype = NULL;
+   switch (type) {
+   case T_VOID:
+     ftype = &ffi_type_void;
+diff --git a/hotspot/src/os_cpu/linux_zero/vm/os_linux_zero.cpp b/hotspot/src/os_cpu/linux_zero/vm/os_linux_zero.cpp
+index d22ea1141..cbee43baa 100644
+--- a/hotspot/src/os_cpu/linux_zero/vm/os_linux_zero.cpp
++++ b/hotspot/src/os_cpu/linux_zero/vm/os_linux_zero.cpp
+@@ -61,6 +61,7 @@ address os::current_stack_pointer() {
+ 
+ frame os::get_sender_for_C_frame(frame* fr) {
+   ShouldNotCallThis();
++  return frame(NULL, NULL); // silence compile warning.
+ }
+ 
+ frame os::current_frame() {
+@@ -98,16 +99,19 @@ void os::initialize_thread(Thread * thr){
+ 
+ address os::Linux::ucontext_get_pc(ucontext_t* uc) {
+   ShouldNotCallThis();
++  return NULL; // silence compile warnings
+ }
+ 
+ ExtendedPC os::fetch_frame_from_context(void* ucVoid,
+                                         intptr_t** ret_sp,
+                                         intptr_t** ret_fp) {
+   ShouldNotCallThis();
++  return NULL; // silence compile warnings
+ }
+ 
+ frame os::fetch_frame_from_context(void* ucVoid) {
+   ShouldNotCallThis();
++  return frame(NULL, NULL); // silence compile warnings
+ }
+ 
+ extern "C" JNIEXPORT int
+@@ -247,11 +251,16 @@ JVM_handle_linux_signal(int sig,
+   }
+ #endif // !PRODUCT
+ 
+-  const char *fmt = "caught unhandled signal %d";
+   char buf[64];
+ 
+-  sprintf(buf, fmt, sig);
++  sprintf(buf, "caught unhandled signal %d", sig);
++
++// Silence -Wformat-security warning for fatal()
++PRAGMA_DIAG_PUSH
++PRAGMA_FORMAT_NONLITERAL_IGNORED
+   fatal(buf);
++PRAGMA_DIAG_POP
++  return true; // silence compiler warnings
+ }
+ 
+ void os::Linux::init_thread_fpu_state(void) {
+@@ -260,6 +269,7 @@ void os::Linux::init_thread_fpu_state(void) {
+ 
+ int os::Linux::get_fpu_control_word() {
+   ShouldNotCallThis();
++  return -1; // silence compile warnings
+ }
+ 
+ void os::Linux::set_fpu_control_word(int fpu) {
+diff --git a/hotspot/src/os_cpu/linux_zero/vm/thread_linux_zero.hpp b/hotspot/src/os_cpu/linux_zero/vm/thread_linux_zero.hpp
+index 94bc83a30..b3ba526f2 100644
+--- a/hotspot/src/os_cpu/linux_zero/vm/thread_linux_zero.hpp
++++ b/hotspot/src/os_cpu/linux_zero/vm/thread_linux_zero.hpp
+@@ -1,5 +1,5 @@
+ /*
+- * Copyright (c) 2000, 2010, Oracle and/or its affiliates. All rights reserved.
++ * Copyright (c) 2000, 2016, Oracle and/or its affiliates. All rights reserved.
+  * Copyright 2007, 2008, 2009, 2010 Red Hat, Inc.
+  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+  *
+@@ -110,6 +110,7 @@
+                                            void* ucontext,
+                                            bool isInJava) {
+     ShouldNotCallThis();
++    return false; // silence compile warning
+   }
+ 
+   bool pd_get_top_frame_for_profiling(frame* fr_addr,
+-- 
+2.26.2
+

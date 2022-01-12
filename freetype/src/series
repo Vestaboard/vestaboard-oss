@@ -1,0 +1,2 @@
+use-right-libtool.patch -p1
+0001-sfnt-Fix-heap-buffer-overflow-59308.patch -p1

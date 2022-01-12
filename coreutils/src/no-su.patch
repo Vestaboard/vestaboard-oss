@@ -1,0 +1,56 @@
+Newer versions of su don't provide su as util-linux is the preferred provider,
+so don't build it.
+
+Upstream-Status: Inappropriate
+Signed-off-by: Ross Burton <ross.burton@intel.com>
+
+diff --git a/src/Makefile.am b/src/Makefile.am
+index 863a32b5a..28c060898 100644
+--- a/src/Makefile.am
++++ b/src/Makefile.am
+@@ -16,7 +16,7 @@
+ ## along with this program; if not, write to the Free Software Foundation,
+ ## Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+ 
+-EXTRA_PROGRAMS = chroot df hostid nice pinky stty su uname uptime users who
++EXTRA_PROGRAMS = chroot df hostid nice pinky stty uname uptime users who
+ 
+ bin_SCRIPTS = groups
+ bin_PROGRAMS = [ chgrp chown chmod cp dd dircolors du \
+@@ -131,8 +131,6 @@ RELEASE_YEAR = \
+ 	chmod +x $@-t
+ 	mv $@-t $@
+ 
+-all-local: su$(EXEEXT)
+-
+ installed_su = $(DESTDIR)$(bindir)/`echo su|sed '$(transform)'`
+ 
+ setuid_root_mode = a=rx,u+s
+@@ -146,27 +144,6 @@ INSTALL_SU = \
+   echo " chmod $(setuid_root_mode) $(installed_su)"; \
+   chmod $(setuid_root_mode) $(installed_su)
+ 
+-install-root: su$(EXEEXT)
+-	@$(INSTALL_SU)
+-
+-install-exec-local: su$(EXEEXT)
+-	@TMPFILE=$(DESTDIR)$(bindir)/.su-$$$$; \
+-	rm -f $$TMPFILE; \
+-	echo > $$TMPFILE; \
+-## See if we can create a setuid root executable in $(bindir).
+-## If not, then don't even try to install su.
+-	can_create_suid_root_executable=no; \
+-	chown root $$TMPFILE > /dev/null 2>&1 \
+-	  && chmod $(setuid_root_mode) $$TMPFILE > /dev/null 2>&1 \
+-	  && can_create_suid_root_executable=yes; \
+-	rm -f $$TMPFILE; \
+-	if test $$can_create_suid_root_executable = yes; then \
+-	  $(INSTALL_SU); \
+-	else \
+-	  echo "WARNING: insufficient access; not installing su"; \
+-	  echo "NOTE: to install su, run 'make install-root' as root"; \
+-	fi
+-
+ uninstall-local:
+ # Remove su only if it's one we installed.
+ 	@if grep '$(GNU_PACKAGE)' $(installed_su) > /dev/null 2>&1; then \

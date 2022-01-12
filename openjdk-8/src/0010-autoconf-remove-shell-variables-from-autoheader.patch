@@ -1,0 +1,46 @@
+From 8864d47290e9d5563fb8f3ea92639c4accc46fe8 Mon Sep 17 00:00:00 2001
+From: Jens Rehsack <rehsack@gmail.com>
+Date: Thu, 2 Jan 2020 13:55:29 +0100
+Subject: [PATCH 10/13] autoconf: remove shell variables from autoheader
+
+Signed-off-by: Richard Leitner <richard.leitner@skidata.com>
+---
+ common/autoconf/basics.m4 | 14 +++++++-------
+ 1 file changed, 7 insertions(+), 7 deletions(-)
+
+diff --git a/common/autoconf/basics.m4 b/common/autoconf/basics.m4
+index 8e06cd2..c220bba 100644
+--- a/common/autoconf/basics.m4
++++ b/common/autoconf/basics.m4
+@@ -661,21 +661,21 @@ AC_DEFUN_ONCE([BASIC_SETUP_OUTPUT_DIR],
+   AC_SUBST(OUTPUT_ROOT, $OUTPUT_ROOT)
+ 
+   # Most of the probed defines are put into config.h
+-  AC_CONFIG_HEADERS([$OUTPUT_ROOT/config.h:$AUTOCONF_DIR/config.h.in])
++  AC_CONFIG_HEADERS([config.h:config.h.in])
+   # The spec.gmk file contains all variables for the make system.
+-  AC_CONFIG_FILES([$OUTPUT_ROOT/spec.gmk:$AUTOCONF_DIR/spec.gmk.in])
++  AC_CONFIG_FILES([spec.gmk:spec.gmk.in])
+   # The hotspot-spec.gmk file contains legacy variables for the hotspot make system.
+-  AC_CONFIG_FILES([$OUTPUT_ROOT/hotspot-spec.gmk:$AUTOCONF_DIR/hotspot-spec.gmk.in])
++  AC_CONFIG_FILES([hotspot-spec.gmk:hotspot-spec.gmk.in])
+   # The bootcycle-spec.gmk file contains support for boot cycle builds.
+-  AC_CONFIG_FILES([$OUTPUT_ROOT/bootcycle-spec.gmk:$AUTOCONF_DIR/bootcycle-spec.gmk.in])
++  AC_CONFIG_FILES([bootcycle-spec.gmk:bootcycle-spec.gmk.in])
+   # The compare.sh is used to compare the build output to other builds.
+-  AC_CONFIG_FILES([$OUTPUT_ROOT/compare.sh:$AUTOCONF_DIR/compare.sh.in])
++  AC_CONFIG_FILES([compare.sh:compare.sh.in])
+   # Spec.sh is currently used by compare-objects.sh
+-  AC_CONFIG_FILES([$OUTPUT_ROOT/spec.sh:$AUTOCONF_DIR/spec.sh.in])
++  AC_CONFIG_FILES([spec.sh:spec.sh.in])
+   # The generated Makefile knows where the spec.gmk is and where the source is.
+   # You can run make from the OUTPUT_ROOT, or from the top-level Makefile
+   # which will look for generated configurations
+-  AC_CONFIG_FILES([$OUTPUT_ROOT/Makefile:$AUTOCONF_DIR/Makefile.in])
++  AC_CONFIG_FILES([Makefile:Makefile.in])
+ ])
+ 
+ AC_DEFUN_ONCE([BASIC_SETUP_LOGGING],
+-- 
+2.26.2
+

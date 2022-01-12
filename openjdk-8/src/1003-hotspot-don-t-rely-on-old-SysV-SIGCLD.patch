@@ -1,0 +1,43 @@
+From 1a4d6458d94bc275a740cab895f8ada303916cd6 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Andr=C3=A9=20Draszik?= <andre.draszik@jci.com>
+Date: Tue, 27 Feb 2018 15:00:55 +0000
+Subject: [PATCH 1003/1013] hotspot: don't rely on old SysV SIGCLD
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+SIGCLD is the old System V name for SIGCHLD, and not
+all c libraries implement it, e.g. musl-libc, which
+leads to the following compilation error:
+
+| hotspot/src/os/linux/vm/jvm_linux.cpp:157:17: error: 'SIGCLD' was not declared in this scope
+|    "CLD",        SIGCLD,         /* Same as SIGCHLD (System V).  */
+|                  ^~~~~~
+
+Just make it conditional, so the code compiles everywhere.
+
+Upstream-Status: Pending
+
+Signed-off-by: André Draszik <andre.draszik@jci.com>
+Signed-off-by: Richard Leitner <richard.leitner@skidata.com>
+---
+ src/os/linux/vm/jvm_linux.cpp | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/hotspot/src/os/linux/vm/jvm_linux.cpp b/hotspot/src/os/linux/vm/jvm_linux.cpp
+index ba84788a1..c22281f7c 100644
+--- a/hotspot/src/os/linux/vm/jvm_linux.cpp
++++ b/hotspot/src/os/linux/vm/jvm_linux.cpp
+@@ -154,7 +154,9 @@ struct siglabel siglabels[] = {
+ #ifdef SIGSTKFLT
+   "STKFLT",     SIGSTKFLT,      /* Stack fault.  */
+ #endif
++#ifdef SIGCLD
+   "CLD",        SIGCLD,         /* Same as SIGCHLD (System V).  */
++#endif
+   "CHLD",       SIGCHLD,        /* Child status has changed (POSIX).  */
+   "CONT",       SIGCONT,        /* Continue (POSIX).  */
+   "STOP",       SIGSTOP,        /* Stop, unblockable (POSIX).  */
+-- 
+2.26.2
+

@@ -1,0 +1,90 @@
+From 385b2007a60c3e792062107d3c4f653fe63d4c63 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Andr=C3=A9=20Draszik?= <andre.draszik@jci.com>
+Date: Tue, 27 Feb 2018 09:28:06 +0000
+Subject: [PATCH 2005/2009] jdk: use correct include for signal
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Compiling against musl-libc gives the following warning (which is
+treated as error due to -Werror:
+| In file included from jdk/src/solaris/javavm/export/jvm_md.h:68:0,
+|                  from jdk/src/share/javavm/export/jvm.h:32,
+|                  from jdk/src/share/native/java/net/net_util.h:29,
+|                  from jdk/src/solaris/native/java/net/InetAddressImplFactory.c:28:
+| usr/include/sys/signal.h:1:2: warning: #warning redirecting incorrect #include <sys/signal.h> to <signal.h> [-Wcpp]
+|  #warning redirecting incorrect #include <sys/signal.h> to <signal.h>
+|   ^~~~~~~
+etc.
+
+As per the message, signal.h needs to be included instead - do so using
+the following command:
+    for i in $(git grep sys/signal\.h jdk | cut -f 1 -d : | sort -u) ; do
+        sed -e 's,sys/signal\.h,signal.h,g' -i ${i}
+    done
+
+Upstream-Status: Pending
+Signed-off-by: André Draszik <andre.draszik@jci.com>
+Signed-off-by: Richard Leitner <richard.leitner@skidata.com>
+---
+ src/aix/native/sun/nio/ch/AixNativeThread.c  | 2 +-
+ src/macosx/javavm/export/jvm_md.h            | 2 +-
+ src/solaris/javavm/export/jvm_md.h           | 2 +-
+ src/solaris/native/sun/nio/ch/NativeThread.c | 2 +-
+ 4 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/jdk/src/aix/native/sun/nio/ch/AixNativeThread.c b/jdk/src/aix/native/sun/nio/ch/AixNativeThread.c
+index c0d5857962..c4abb7ae5d 100644
+--- a/jdk/src/aix/native/sun/nio/ch/AixNativeThread.c
++++ b/jdk/src/aix/native/sun/nio/ch/AixNativeThread.c
+@@ -32,7 +32,7 @@
+ #include "sun_nio_ch_NativeThread.h"
+ 
+ #include <pthread.h>
+-#include <sys/signal.h>
++#include <signal.h>
+ 
+ /* Also defined in src/aix/native/java/net/aix_close.c */
+ #define INTERRUPT_SIGNAL (SIGRTMAX - 1)
+diff --git a/jdk/src/macosx/javavm/export/jvm_md.h b/jdk/src/macosx/javavm/export/jvm_md.h
+index 012bb1babe..0b57576833 100644
+--- a/jdk/src/macosx/javavm/export/jvm_md.h
++++ b/jdk/src/macosx/javavm/export/jvm_md.h
+@@ -60,7 +60,7 @@
+ #include <sys/stat.h>
+ #include <fcntl.h>
+ #include <errno.h>
+-#include <sys/signal.h>
++#include <signal.h>
+ 
+ /* O Flags */
+ 
+diff --git a/jdk/src/solaris/javavm/export/jvm_md.h b/jdk/src/solaris/javavm/export/jvm_md.h
+index 5c681914bb..62415ee255 100644
+--- a/jdk/src/solaris/javavm/export/jvm_md.h
++++ b/jdk/src/solaris/javavm/export/jvm_md.h
+@@ -65,7 +65,7 @@
+ #include <sys/stat.h>
+ #include <fcntl.h>
+ #include <errno.h>
+-#include <sys/signal.h>
++#include <signal.h>
+ 
+ /* O Flags */
+ 
+diff --git a/jdk/src/solaris/native/sun/nio/ch/NativeThread.c b/jdk/src/solaris/native/sun/nio/ch/NativeThread.c
+index 5e2a78b7af..204f0441a9 100644
+--- a/jdk/src/solaris/native/sun/nio/ch/NativeThread.c
++++ b/jdk/src/solaris/native/sun/nio/ch/NativeThread.c
+@@ -34,7 +34,7 @@
+ 
+ #ifdef __linux__
+   #include <pthread.h>
+-  #include <sys/signal.h>
++  #include <signal.h>
+   /* Also defined in net/linux_close.c */
+   #define INTERRUPT_SIGNAL (__SIGRTMAX - 2)
+ #elif __solaris__
+-- 
+2.26.2
+

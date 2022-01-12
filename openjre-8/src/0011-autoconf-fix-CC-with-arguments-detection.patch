@@ -1,0 +1,61 @@
+From e878eea93b95d82d3ea13f4122f4f74cd2f8f3df Mon Sep 17 00:00:00 2001
+From: Richard Leitner <richard.leitner@skidata.com>
+Date: Thu, 22 Oct 2020 09:23:06 +0200
+Subject: [PATCH 11/13] autoconf: fix CC with arguments detection
+
+Fix the compiler binary detection for exported CC variables with
+arguments in them.
+
+Upstream-Status: Pending
+
+Signed-off-by: Richard Leitner <richard.leitner@skidata.com>
+---
+ common/autoconf/toolchain.m4 | 23 +++++++++++++++--------
+ 1 file changed, 15 insertions(+), 8 deletions(-)
+
+diff --git a/common/autoconf/toolchain.m4 b/common/autoconf/toolchain.m4
+index c0a4af5..28da6ea 100644
+--- a/common/autoconf/toolchain.m4
++++ b/common/autoconf/toolchain.m4
+@@ -478,23 +478,30 @@ AC_DEFUN([TOOLCHAIN_FIND_COMPILER],
+   SEARCH_LIST="$3"
+ 
+   if test "x[$]$1" != x; then
++    # split compiler program and arguments
++    CBIN=`cut -d ' ' -f1 <<<"[$]$1"`
++    CARGS=`cut -d ' ' -f2- <<<"[$]$1"`
++
+     # User has supplied compiler name already, always let that override.
+-    AC_MSG_NOTICE([Will use user supplied compiler $1=[$]$1])
+-    if test "x`basename [$]$1`" = "x[$]$1"; then
++    AC_MSG_NOTICE([Will use user supplied compiler ($CBIN) $1=[$]$1])
++    if test "x`basename $CBIN`" = "x$CBIN"; then
+       # A command without a complete path is provided, search $PATH.
+       
+-      AC_PATH_PROGS(POTENTIAL_$1, [$]$1)
+-      if test "x$POTENTIAL_$1" != x; then
+-        $1=$POTENTIAL_$1
++      AC_PATH_PROGS(POTENTIAL_CBIN, $CBIN)
++      if test "x$POTENTIAL_CBIN" != x; then
++        CBIN=$POTENTIAL_CBIN
+       else
+-        AC_MSG_ERROR([User supplied compiler $1=[$]$1 could not be found])
++        AC_MSG_ERROR([User supplied compiler $1=$CBIN could not be found])
+       fi
+     else
+       # Otherwise it might already be a complete path
+-      if test ! -x "[$]$1"; then
+-        AC_MSG_ERROR([User supplied compiler $1=[$]$1 does not exist])
++      if test ! -x "$CBIN"; then
++        AC_MSG_ERROR([User supplied compiler $1=$CBIN does not exist])
+       fi
+     fi
++
++    $1="$CBIN $CARGS"
++    AC_MSG_NOTICE([Mapped user supplied compiler to $1=[$]$1])
+   else
+     # No user supplied value. Locate compiler ourselves.
+ 
+-- 
+2.26.2
+

@@ -1,0 +1,37 @@
+From 4d1bd6a65c52564f32761217ded7b9bdde43556b Mon Sep 17 00:00:00 2001
+From: Wenlin Kang <wenlin.kang@windriver.com>
+Date: Sun, 17 Feb 2019 22:38:33 -0800
+Subject: [PATCH 1001/1013] hotspot: fix crash on JNI_CreateJavaVM
+
+In function os::pd_create_stack_guard_pages(char* addr, size_t size),
+when addr < os::Linux::initial_thread_stack_bottom(), usually munmap()
+will not be called, but when mincore()==-1, get_stack_commited_bottom()
+will make stack_extent < os::Linux::initial_thread_stack_bottom() and
+stack_extent < addr too, then munmap() is called, in such case, it may
+cause segment(we have reproduced it on linux_PPC).
+
+Upstream-Status: Pending
+
+Signed-off-by: Wenlin Kang <wenlin.kang@windriver.com>
+Signed-off-by: Richard Leitner <richard.leitner@skidata.com>
+---
+ src/os/linux/vm/os_linux.cpp | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/hotspot/src/os/linux/vm/os_linux.cpp b/hotspot/src/os/linux/vm/os_linux.cpp
+index c477851c1..47eef1e7c 100644
+--- a/hotspot/src/os/linux/vm/os_linux.cpp
++++ b/hotspot/src/os/linux/vm/os_linux.cpp
+@@ -3227,7 +3227,8 @@ bool os::pd_create_stack_guard_pages(char* addr, size_t size) {
+     uintptr_t stack_extent = (uintptr_t) os::Linux::initial_thread_stack_bottom();
+     unsigned char vec[1];
+ 
+-    if (mincore((address)stack_extent, os::vm_page_size(), vec) == -1) {
++    if ((mincore((address)stack_extent, os::vm_page_size(), vec) == -1)
++        && ((size_t)addr > (size_t)stack_extent)) {
+       // Fallback to slow path on all errors, including EAGAIN
+       stack_extent = (uintptr_t) get_stack_commited_bottom(
+                                     os::Linux::initial_thread_stack_bottom(),
+-- 
+2.26.2
+

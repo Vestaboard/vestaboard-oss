@@ -1,0 +1,83 @@
+From c7fb1d599ba66116fb132537b4696092e9c48331 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Andr=C3=A9=20Draszik?= <andre.draszik@jci.com>
+Date: Tue, 27 Feb 2018 13:43:04 +0000
+Subject: [PATCH 2003/2009] jdk: Allow using a system-installed libpng
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Patch stolen (and some typos corrected) from debian patch,
+which itself was a backport from:
+  http://hg.openjdk.java.net/jdk9/jdk9/rev/bfc1c131e540
+  http://hg.openjdk.java.net/jdk9/jdk9/jdk/rev/5e503831b142
+
+Issues fixed on top of debian patch:
+  * the default when --with-libpng= is not given works
+  * using the bundled libpng works
+
+Upstream-Status: Backport
+Signed-off-by: André Draszik <andre.draszik@jci.com>
+Signed-off-by: Richard Leitner <richard.leitner@skidata.com>
+---
+ make/lib/Awt2dLibraries.gmk                          | 12 +++++++++---
+ .../native/sun/awt/splashscreen/splashscreen_png.c   |  3 +--
+ 2 files changed, 10 insertions(+), 5 deletions(-)
+
+diff --git a/jdk/make/lib/Awt2dLibraries.gmk b/jdk/make/lib/Awt2dLibraries.gmk
+index 7fffcafc70..7f42e09ce4 100644
+--- a/jdk/make/lib/Awt2dLibraries.gmk
++++ b/jdk/make/lib/Awt2dLibraries.gmk
+@@ -1155,7 +1155,6 @@ endif
+ ifndef BUILD_HEADLESS_ONLY
+   LIBSPLASHSCREEN_DIRS := \
+     $(JDK_TOPDIR)/src/share/native/sun/awt/image/jpeg \
+-    $(JDK_TOPDIR)/src/share/native/sun/awt/libpng \
+     $(JDK_TOPDIR)/src/share/native/sun/awt/splashscreen
+ 
+   ifeq ($(USE_EXTERNAL_LIBGIF), true)
+@@ -1172,6 +1171,13 @@ ifndef BUILD_HEADLESS_ONLY
+     LIBJPEG_CFLAGS := -I$(JDK_TOPDIR)/src/share/native/sun/awt/image/jpeg
+   endif
+ 
++  ifeq ($(USE_EXTERNAL_LIBPNG), true)
++    LIBPNG_LDFLAGS := -lpng
++  else
++    LIBSPLASHSCREEN_DIRS += $(JDK_TOPDIR)/src/share/native/sun/awt/libpng
++    LIBPNG_CFLAGS := -I$(JDK_TOPDIR)/src/share/native/sun/awt/libpng
++  endif
++
+   ifneq ($(OPENJDK_TARGET_OS), macosx)
+     LIBSPLASHSCREEN_DIRS += $(JDK_TOPDIR)/src/$(OPENJDK_TARGET_OS_API_DIR)/native/sun/awt/splashscreen
+   else
+@@ -1229,12 +1235,12 @@ ifndef BUILD_HEADLESS_ONLY
+       LANG := C, \
+       OPTIMIZATION := LOW, \
+       CFLAGS := $(LIBSPLASHSCREEN_CFLAGS) $(CFLAGS_JDKLIB) \
+-                $(GIFLIB_CFLAGS) $(LIBJPEG_CFLAGS), \
++                $(GIFLIB_CFLAGS) $(LIBJPEG_CFLAGS) $(LIBPNG_CFLAGS), \
+       MAPFILE := $(JDK_TOPDIR)/make/mapfiles/libsplashscreen/mapfile-vers, \
+       LDFLAGS := $(LDFLAGS_JDKLIB) \
+           $(call SET_SHARED_LIBRARY_ORIGIN), \
+       LDFLAGS_SUFFIX := $(LIBSPLASHSCREEN_LDFLAGS_SUFFIX) $(LIBZ) \
+-                        $(GIFLIB_LDFLAGS) $(LIBJPEG_LDFLAGS), \
++                        $(GIFLIB_LDFLAGS) $(LIBJPEG_LDFLAGS) $(LIBPNG_LDFLAGS), \
+       LDFLAGS_SUFFIX_solaris := -lc, \
+       VERSIONINFO_RESOURCE := $(JDK_TOPDIR)/src/windows/resource/version.rc, \
+       RC_FLAGS := $(RC_FLAGS) \
+diff --git a/jdk/src/share/native/sun/awt/splashscreen/splashscreen_png.c b/jdk/src/share/native/sun/awt/splashscreen/splashscreen_png.c
+index 3599433e42..5bf002ea17 100644
+--- a/jdk/src/share/native/sun/awt/splashscreen/splashscreen_png.c
++++ b/jdk/src/share/native/sun/awt/splashscreen/splashscreen_png.c
+@@ -25,8 +25,7 @@
+ 
+ #include "splashscreen_impl.h"
+ 
+-#include "../libpng/png.h"
+-
++#include <png.h>
+ #include <setjmp.h>
+ 
+ #define SIG_BYTES 8
+-- 
+2.26.2
+

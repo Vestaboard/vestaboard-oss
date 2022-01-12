@@ -1,0 +1,33 @@
+From 37b5885e35a7974bbd8895ae9a7e9ec7ebf9dc68 Mon Sep 17 00:00:00 2001
+From: Richard Leitner <richard.leitner@skidata.com>
+Date: Thu, 20 Aug 2020 09:39:23 +0200
+Subject: [PATCH 1012/1013] hotspot: enable -Wno-error
+
+As we don't want to deal with compiler warnings in OpenEmbedded disable
+them for now.
+
+Upstream-Status: Pending
+
+Signed-off-by: Richard Leitner <richard.leitner@skidata.com>
+---
+ make/linux/makefiles/gcc.make | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/hotspot/make/linux/makefiles/gcc.make b/hotspot/make/linux/makefiles/gcc.make
+index cd9511e50..94412c8fe 100644
+--- a/hotspot/make/linux/makefiles/gcc.make
++++ b/hotspot/make/linux/makefiles/gcc.make
+@@ -200,8 +200,8 @@ else
+   CFLAGS += -pipe
+ endif
+ 
+-# Compiler warnings are treated as errors
+-WARNINGS_ARE_ERRORS = -Werror
++# Compiler warnings are not treated as errors
++WARNINGS_ARE_ERRORS = -Wno-error
+ 
+ ifeq ($(USE_CLANG), true)
+   # However we need to clean the code up before we can unrestrictedly enable this option with Clang
+-- 
+2.26.2
+

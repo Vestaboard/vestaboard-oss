@@ -1,0 +1,173 @@
+From 5bced26833d8e7876852fa65479f7ada5266a3d7 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Andr=C3=A9=20Draszik?= <andre.draszik@jci.com>
+Date: Tue, 27 Feb 2018 09:28:06 +0000
+Subject: [PATCH 2004/2009] jdk: use correct include for poll
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Compiling against musl-libc gives the following warning (which is
+treated as error due to -Werror:
+| In file included from jdk/src/solaris/native/java/net/net_util_md.h:36:0,
+|                  from jdk/src/share/native/java/net/net_util.h:31,
+|                  from jdk/src/solaris/native/java/net/InetAddressImplFactory.c:28:
+| usr/include/sys/poll.h:1:2: warning: #warning redirecting incorrect #include <sys/poll.h> to <poll.h> [-Wcpp]
+|  #warning redirecting incorrect #include <sys/poll.h> to <poll.h>
+|   ^~~~~~~
+etc.
+
+To use poll(), poll.h needs to be included, even on glibc - do so using
+the following command:
+    for i in $(git grep sys/poll\.h jdk | cut -f 1 -d : | sort -u) ; do
+        sed -e 's,sys/poll\.h,poll.h,g' -i ${i}
+    done
+
+Upstream-Status: Pending
+Signed-off-by: André Draszik <andre.draszik@jci.com>
+Signed-off-by: Richard Leitner <richard.leitner@skidata.com>
+---
+ src/aix/native/java/net/aix_close.c                 | 2 +-
+ src/aix/native/sun/nio/ch/AixPollPort.c             | 2 +-
+ src/solaris/native/java/net/PlainSocketImpl.c       | 2 +-
+ src/solaris/native/java/net/bsd_close.c             | 2 +-
+ src/solaris/native/java/net/linux_close.c           | 2 +-
+ src/solaris/native/java/net/net_util_md.h           | 2 +-
+ src/solaris/native/sun/nio/ch/DevPollArrayWrapper.c | 2 +-
+ src/solaris/native/sun/nio/ch/Net.c                 | 2 +-
+ src/solaris/native/sun/nio/fs/LinuxWatchService.c   | 2 +-
+ src/solaris/transport/socket/socket_md.c            | 2 +-
+ 10 files changed, 10 insertions(+), 10 deletions(-)
+
+diff --git a/jdk/src/aix/native/java/net/aix_close.c b/jdk/src/aix/native/java/net/aix_close.c
+index 90d57b42f0..fbeb73efa4 100644
+--- a/jdk/src/aix/native/java/net/aix_close.c
++++ b/jdk/src/aix/native/java/net/aix_close.c
+@@ -54,7 +54,7 @@
+ #include <unistd.h>
+ #include <errno.h>
+ 
+-#include <sys/poll.h>
++#include <poll.h>
+ 
+ /*
+  * Stack allocated by thread when doing blocking operation
+diff --git a/jdk/src/aix/native/sun/nio/ch/AixPollPort.c b/jdk/src/aix/native/sun/nio/ch/AixPollPort.c
+index 70064b890e..c10c602b6b 100644
+--- a/jdk/src/aix/native/sun/nio/ch/AixPollPort.c
++++ b/jdk/src/aix/native/sun/nio/ch/AixPollPort.c
+@@ -34,7 +34,7 @@
+ #include <unistd.h>
+ #include <sys/types.h>
+ #include <sys/socket.h>
+-#include <sys/poll.h>
++#include <poll.h>
+ #include <sys/pollset.h>
+ #include <fcntl.h>
+ #include <stddef.h>
+diff --git a/jdk/src/solaris/native/java/net/PlainSocketImpl.c b/jdk/src/solaris/native/java/net/PlainSocketImpl.c
+index 373c5e3625..9aafbc09e5 100644
+--- a/jdk/src/solaris/native/java/net/PlainSocketImpl.c
++++ b/jdk/src/solaris/native/java/net/PlainSocketImpl.c
+@@ -28,7 +28,7 @@
+ #include <sys/types.h>
+ #include <sys/socket.h>
+ #if defined(__linux__) && !defined(USE_SELECT)
+-#include <sys/poll.h>
++#include <poll.h>
+ #endif
+ #include <netinet/tcp.h>        /* Defines TCP_NODELAY, needed for 2.6 */
+ #include <netinet/in.h>
+diff --git a/jdk/src/solaris/native/java/net/bsd_close.c b/jdk/src/solaris/native/java/net/bsd_close.c
+index 89a20707c4..511ab845a8 100644
+--- a/jdk/src/solaris/native/java/net/bsd_close.c
++++ b/jdk/src/solaris/native/java/net/bsd_close.c
+@@ -38,7 +38,7 @@
+ #include <sys/uio.h>
+ #include <unistd.h>
+ #include <errno.h>
+-#include <sys/poll.h>
++#include <poll.h>
+ 
+ /*
+  * Stack allocated by thread when doing blocking operation
+diff --git a/jdk/src/solaris/native/java/net/linux_close.c b/jdk/src/solaris/native/java/net/linux_close.c
+index eacc2afd15..159ca132c4 100644
+--- a/jdk/src/solaris/native/java/net/linux_close.c
++++ b/jdk/src/solaris/native/java/net/linux_close.c
+@@ -36,7 +36,7 @@
+ #include <sys/uio.h>
+ #include <unistd.h>
+ #include <errno.h>
+-#include <sys/poll.h>
++#include <poll.h>
+ 
+ /*
+  * Stack allocated by thread when doing blocking operation
+diff --git a/jdk/src/solaris/native/java/net/net_util_md.h b/jdk/src/solaris/native/java/net/net_util_md.h
+index a48446de9c..8915b68aae 100644
+--- a/jdk/src/solaris/native/java/net/net_util_md.h
++++ b/jdk/src/solaris/native/java/net/net_util_md.h
+@@ -33,7 +33,7 @@
+ #include <unistd.h>
+ 
+ #ifndef USE_SELECT
+-#include <sys/poll.h>
++#include <poll.h>
+ #endif
+ 
+ 
+diff --git a/jdk/src/solaris/native/sun/nio/ch/DevPollArrayWrapper.c b/jdk/src/solaris/native/sun/nio/ch/DevPollArrayWrapper.c
+index 6860a167bb..20849dabcf 100644
+--- a/jdk/src/solaris/native/sun/nio/ch/DevPollArrayWrapper.c
++++ b/jdk/src/solaris/native/sun/nio/ch/DevPollArrayWrapper.c
+@@ -28,7 +28,7 @@
+ #include "jvm.h"
+ #include "jlong.h"
+ #include "sun_nio_ch_DevPollArrayWrapper.h"
+-#include <sys/poll.h>
++#include <poll.h>
+ #include <unistd.h>
+ #include <sys/time.h>
+ 
+diff --git a/jdk/src/solaris/native/sun/nio/ch/Net.c b/jdk/src/solaris/native/sun/nio/ch/Net.c
+index 73560ad6c6..a3720055c4 100644
+--- a/jdk/src/solaris/native/sun/nio/ch/Net.c
++++ b/jdk/src/solaris/native/sun/nio/ch/Net.c
+@@ -23,7 +23,7 @@
+  * questions.
+  */
+ 
+-#include <sys/poll.h>
++#include <poll.h>
+ #include <sys/types.h>
+ #include <sys/socket.h>
+ #include <string.h>
+diff --git a/jdk/src/solaris/native/sun/nio/fs/LinuxWatchService.c b/jdk/src/solaris/native/sun/nio/fs/LinuxWatchService.c
+index 375aaa4850..7606e9ba82 100644
+--- a/jdk/src/solaris/native/sun/nio/fs/LinuxWatchService.c
++++ b/jdk/src/solaris/native/sun/nio/fs/LinuxWatchService.c
+@@ -32,7 +32,7 @@
+ #include <dlfcn.h>
+ #include <sys/types.h>
+ #include <sys/socket.h>
+-#include <sys/poll.h>
++#include <poll.h>
+ #include <sys/inotify.h>
+ 
+ #include "sun_nio_fs_LinuxWatchService.h"
+diff --git a/jdk/src/solaris/transport/socket/socket_md.c b/jdk/src/solaris/transport/socket/socket_md.c
+index 33e062e087..819fcabdb8 100644
+--- a/jdk/src/solaris/transport/socket/socket_md.c
++++ b/jdk/src/solaris/transport/socket/socket_md.c
+@@ -37,7 +37,7 @@
+ #include <thread.h>
+ #else
+ #include <pthread.h>
+-#include <sys/poll.h>
++#include <poll.h>
+ #endif
+ 
+ #include "socket_md.h"
+-- 
+2.26.2
+

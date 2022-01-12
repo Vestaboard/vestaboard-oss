@@ -1,0 +1,3 @@
+0001-rngd_jitter-fix-O_NONBLOCK-setting-for-entropy-pipe.patch -p1
+0002-rngd_jitter-initialize-AES-key-before-setting-the-en.patch -p1
+0003-rngd_jitter-always-read-from-entropy-pipe-before-set.patch -p1
